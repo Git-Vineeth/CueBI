@@ -1,0 +1,16 @@
+Date,Customer,City,Product,Quantity,Unit Price,Total,Payment Mode,GST Amount,Invoice No
+01/04/2025,Rajesh Kumar,Mumbai,Laptop,2,55000,110000,UPI,19800,INV-001
+05/04/2025,Priya Sharma,Delhi,Printer,1,18500,18500,Card,3330,INV-002
+10/04/2025,Amit Patel,Ahmedabad,Mouse,10,799,7990,COD,1438.20,INV-003
+15/04/2025,Sneha Reddy,Hyderabad,Monitor,3,14000,42000,Netbanking,7560,INV-004
+20/04/2025,Vikram Singh,Jaipur,Laptop,1,55000,55000,UPI,9900,INV-005
+25/04/2025,Anita Desai,Pune,Keyboard,5,4500,22500,UPI,4050,INV-006
+01/05/2025,Suresh Iyer,Chennai,Laptop,3,55000,165000,Cheque,29700,INV-007
+08/05/2025,Kavita Nair,Kochi,Printer,2,18500,37000,UPI,6660,INV-008
+15/05/2025,Manish Gupta,Lucknow,Monitor,5,14000,70000,Netbanking,12600,INV-009
+20/05/2025,Deepa Joshi,Bengaluru,Mouse,20,799,15980,Card,2876.40,INV-010
+25/05/2025,Rajesh Kumar,Mumbai,Standing Desk,1,9500,9500,UPI,1710,INV-011
+01/06/2025,Rahul Mehta,Surat,Webcam,4,3200,12800,COD,2304,INV-012
+10/06/2025,Pooja Verma,Indore,Office Chair,2,12500,25000,UPI,4500,INV-013
+15/06/2025,Arjun Rao,Visakhapatnam,Laptop,2,55000,110000,Cheque,19800,INV-014
+20/06/2025,Meera Pillai,Thiruvananthapuram,Keyboard,3,4500,13500,UPI,2430,INV-015

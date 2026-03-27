@@ -24,6 +24,7 @@ class ColumnInfo:
     is_foreign_key: bool = False
     references_table: Optional[str] = None
     references_column: Optional[str] = None
+    description: Optional[str] = None
     sample_values: list[Any] = field(default_factory=list)
 
 

@@ -7,10 +7,10 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from sqlalchemy import text
 
 from apps.api.api.db import async_session
-from packages.connectors.tally import parse_tally_xml, parse_tally_excel, create_tally_staging
+from packages.connectors.tally import parse_tally_xml, parse_tally_excel, create_tally_staging, TallyData
 from packages.connectors.base import SchemaInfo, TableInfo, ColumnInfo
-from packages.core.chunker import chunk_schema
-from packages.core.embedder import Embedder
+from packages.core.chunker import schema_to_chunks
+from packages.core.embedder import store_chunks
 
 router = APIRouter()
 
@@ -107,9 +107,9 @@ async def upload_tally_file(
 
     # Run embedding pipeline
     try:
-        chunks = chunk_schema(schema_info, connection_id=connection_id)
-        embedder = Embedder()
-        vectors_stored = await embedder.store_chunks(chunks, connection_id=connection_id)
+        chunks = schema_to_chunks(schema_info)
+        point_ids = await store_chunks(connection_id, chunks)
+        vectors_stored = len(point_ids)
 
         # Store metadata
         async with async_session() as db:
@@ -117,13 +117,15 @@ async def upload_tally_file(
                 for col in table.columns:
                     await db.execute(
                         text("""
-                            INSERT INTO schema_metadata (connection_id, table_name, column_name, data_type, description)
-                            VALUES (:cid, :table, :col, :dtype, :desc)
+                            INSERT INTO schema_metadata (connection_id, table_name, column_name, data_type, description, is_primary_key, foreign_key)
+                            VALUES (:cid, :table, :col, :dtype, :desc, :pk, :fk)
                         """),
                         {
                             "cid": connection_id, "table": table.name,
                             "col": col.name, "dtype": col.data_type,
                             "desc": col.description,
+                            "pk": col.is_primary_key,
+                            "fk": f"{col.references_table}.{col.references_column}" if col.is_foreign_key else None,
                         },
                     )
             await db.execute(
@@ -175,7 +177,8 @@ def _build_schema_from_tally(data: TallyData, counts: dict) -> SchemaInfo:
             description="Individual debit/credit entries within each Tally voucher",
             row_count=counts["tally_voucher_entries"],
             columns=[
-                ColumnInfo(name="voucher_id", data_type="integer", description="Links to tally_vouchers.id", foreign_key="tally_vouchers.id"),
+                ColumnInfo(name="voucher_id", data_type="integer", description="Links to tally_vouchers.id",
+                           is_foreign_key=True, references_table="tally_vouchers", references_column="id"),
                 ColumnInfo(name="ledger_name", data_type="varchar", description="Accounting ledger head (e.g. Sales A/c, Cash A/c, Bank A/c)"),
                 ColumnInfo(name="amount", data_type="numeric", description="Entry amount in INR (positive=debit, negative=credit)"),
                 ColumnInfo(name="is_debit", data_type="boolean", description="True if debit entry, False if credit"),
@@ -227,4 +230,4 @@ def _build_schema_from_tally(data: TallyData, counts: dict) -> SchemaInfo:
                 row_count=len(rows), columns=cols,
             ))
 
-    return SchemaInfo(tables=tables, dialect="postgresql")
+    return SchemaInfo(tables=tables, dialect="postgresql", database_name="bharatbi")

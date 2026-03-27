@@ -100,16 +100,20 @@ def _make_column_chunk(table: TableInfo, col: ColumnInfo, schema: SchemaInfo) ->
     if col.sample_values and col.sample_values != ["[REDACTED]"]:
         samples_str = f"Sample values: {', '.join(str(v) for v in col.sample_values[:3])}\n"
 
+    desc_str = ""
+    if col.description:
+        desc_str = f"Description: {col.description}\n"
+
     text = (
         f"Column: {table.name}.{col.name}\n"
         f"Type: {col.data_type} | "
         f"Nullable: {'yes' if col.is_nullable else 'no'} | "
         f"Primary key: {'yes' if col.is_primary_key else 'no'}\n"
         f"{fk_info}"
+        f"{desc_str}"
         f"{samples_str}"
     )
-    if col.name:  # description will be filled by LLM enrichment step
-        text = text.strip()
+    text = text.strip()
 
     return {
         "text": text.strip(),
