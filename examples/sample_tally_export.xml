@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ENVELOPE>
+    <HEADER>
+        <VERSION>1</VERSION>
+        <TALLYREQUEST>Export</TALLYREQUEST>
+        <TYPE>Data</TYPE>
+    </HEADER>
+    <BODY>
+        <DESC>
+            <STATICVARIABLES>
+                <SVCURRENTCOMPANY>Sharma Electronics Pvt Ltd</SVCURRENTCOMPANY>
+            </STATICVARIABLES>
+        </DESC>
+        <DATA>
+            <TALLYMESSAGE>
+                <!-- Ledgers -->
+                <LEDGER NAME="Cash A/c">
+                    <NAME>Cash A/c</NAME>
+                    <PARENT>Cash-in-Hand</PARENT>
+                    <OPENINGBALANCE>50000</OPENINGBALANCE>
+                    <CLOSINGBALANCE>125000</CLOSINGBALANCE>
+                </LEDGER>
+                <LEDGER NAME="HDFC Bank">
+                    <NAME>HDFC Bank</NAME>
+                    <PARENT>Bank Accounts</PARENT>
+                    <OPENINGBALANCE>500000</OPENINGBALANCE>
+                    <CLOSINGBALANCE>750000</CLOSINGBALANCE>
+                </LEDGER>
+                <LEDGER NAME="Rajesh Traders">
+                    <NAME>Rajesh Traders</NAME>
+                    <PARENT>Sundry Debtors</PARENT>
+                    <OPENINGBALANCE>120000</OPENINGBALANCE>
+                    <CLOSINGBALANCE>85000</CLOSINGBALANCE>
+                    <PARTYGSTIN>27AABCR1234R1ZM</PARTYGSTIN>
+                    <LEDSTATENAME>Maharashtra</LEDSTATENAME>
+                </LEDGER>
+                <LEDGER NAME="Mumbai Suppliers">
+                    <NAME>Mumbai Suppliers</NAME>
+                    <PARENT>Sundry Creditors</PARENT>
+                    <OPENINGBALANCE>-200000</OPENINGBALANCE>
+                    <CLOSINGBALANCE>-180000</CLOSINGBALANCE>
+                    <PARTYGSTIN>27AABCS5678R1ZM</PARTYGSTIN>
+                    <LEDSTATENAME>Maharashtra</LEDSTATENAME>
+                </LEDGER>
+                <LEDGER NAME="Sales A/c">
+                    <NAME>Sales A/c</NAME>
+                    <PARENT>Sales Accounts</PARENT>
+                    <OPENINGBALANCE>0</OPENINGBALANCE>
+                    <CLOSINGBALANCE>-1500000</CLOSINGBALANCE>
+                </LEDGER>
+
+                <!-- Stock Items -->
+                <STOCKITEM NAME="Samsung Galaxy S24">
+                    <NAME>Samsung Galaxy S24</NAME>
+                    <PARENT>Mobile Phones</PARENT>
+                    <BASEUNITS>Nos</BASEUNITS>
+                    <OPENINGBALANCE>50</OPENINGBALANCE>
+                    <OPENINGVALUE>2500000</OPENINGVALUE>
+                    <HSNCODE>85171210</HSNCODE>
+                </STOCKITEM>
+                <STOCKITEM NAME="iPhone 15">
+                    <NAME>iPhone 15</NAME>
+                    <PARENT>Mobile Phones</PARENT>
+                    <BASEUNITS>Nos</BASEUNITS>
+                    <OPENINGBALANCE>30</OPENINGBALANCE>
+                    <OPENINGVALUE>2400000</OPENINGVALUE>
+                    <HSNCODE>85171210</HSNCODE>
+                </STOCKITEM>
+                <STOCKITEM NAME="USB-C Cable">
+                    <NAME>USB-C Cable</NAME>
+                    <PARENT>Accessories</PARENT>
+                    <BASEUNITS>Nos</BASEUNITS>
+                    <OPENINGBALANCE>500</OPENINGBALANCE>
+                    <OPENINGVALUE>75000</OPENINGVALUE>
+                    <HSNCODE>85444290</HSNCODE>
+                </STOCKITEM>
+
+                <!-- Vouchers (Transactions) -->
+                <VOUCHER>
+                    <DATE>20250415</DATE>
+                    <VOUCHERTYPENAME>Sales</VOUCHERTYPENAME>
+                    <VOUCHERNUMBER>S-001</VOUCHERNUMBER>
+                    <PARTYLEDGERNAME>Rajesh Traders</PARTYLEDGERNAME>
+                    <NARRATION>Sale of Samsung Galaxy S24 x 5</NARRATION>
+                    <ALLLEDGERENTRIES.LIST>
+                        <LEDGERNAME>Rajesh Traders</LEDGERNAME>
+                        <AMOUNT>-295000</AMOUNT>
+                    </ALLLEDGERENTRIES.LIST>
+                    <ALLLEDGERENTRIES.LIST>
+                        <LEDGERNAME>Sales A/c</LEDGERNAME>
+                        <AMOUNT>250000</AMOUNT>
+                    </ALLLEDGERENTRIES.LIST>
+                    <ALLLEDGERENTRIES.LIST>
+                        <LEDGERNAME>CGST</LEDGERNAME>
+                        <AMOUNT>22500</AMOUNT>
+                    </ALLLEDGERENTRIES.LIST>
+                    <ALLLEDGERENTRIES.LIST>
+                        <LEDGERNAME>SGST</LEDGERNAME>
+                        <AMOUNT>22500</AMOUNT>
+                    </ALLLEDGERENTRIES.LIST>
+                    <ALLINVENTORYENTRIES.LIST>
+                        <STOCKITEMNAME>Samsung Galaxy S24</STOCKITEMNAME>
+                        <ACTUALQTY>5</ACTUALQTY>
+                        <RATE>50000</RATE>
+                        <AMOUNT>250000</AMOUNT>
+                    </ALLINVENTORYENTRIES.LIST>
+                </VOUCHER>
+
+                <VOUCHER>
+                    <DATE>20250420</DATE>
+                    <VOUCHERTYPENAME>Purchase</VOUCHERTYPENAME>
+                    <VOUCHERNUMBER>P-001</VOUCHERNUMBER>
+                    <PARTYLEDGERNAME>Mumbai Suppliers</PARTYLEDGERNAME>
+                    <NARRATION>Purchase of iPhone 15 x 10</NARRATION>
+                    <ALLLEDGERENTRIES.LIST>
+                        <LEDGERNAME>Purchase A/c</LEDGERNAME>
+                        <AMOUNT>-800000</AMOUNT>
+                    </ALLLEDGERENTRIES.LIST>
+                    <ALLLEDGERENTRIES.LIST>
+                        <LEDGERNAME>Mumbai Suppliers</LEDGERNAME>
+                        <AMOUNT>944000</AMOUNT>
+                    </ALLLEDGERENTRIES.LIST>
+                    <ALLLEDGERENTRIES.LIST>
+                        <LEDGERNAME>IGST</LEDGERNAME>
+                        <AMOUNT>-144000</AMOUNT>
+                    </ALLLEDGERENTRIES.LIST>
+                    <ALLINVENTORYENTRIES.LIST>
+                        <STOCKITEMNAME>iPhone 15</STOCKITEMNAME>
+                        <ACTUALQTY>10</ACTUALQTY>
+                        <RATE>80000</RATE>
+                        <AMOUNT>800000</AMOUNT>
+                    </ALLINVENTORYENTRIES.LIST>
+                </VOUCHER>
+
+                <VOUCHER>
+                    <DATE>20250501</DATE>
+                    <VOUCHERTYPENAME>Receipt</VOUCHERTYPENAME>
+                    <VOUCHERNUMBER>R-001</VOUCHERNUMBER>
+                    <PARTYLEDGERNAME>Rajesh Traders</PARTYLEDGERNAME>
+                    <NARRATION>Payment received from Rajesh Traders via UPI</NARRATION>
+                    <ALLLEDGERENTRIES.LIST>
+                        <LEDGERNAME>HDFC Bank</LEDGERNAME>
+                        <AMOUNT>-295000</AMOUNT>
+                    </ALLLEDGERENTRIES.LIST>
+                    <ALLLEDGERENTRIES.LIST>
+                        <LEDGERNAME>Rajesh Traders</LEDGERNAME>
+                        <AMOUNT>295000</AMOUNT>
+                    </ALLLEDGERENTRIES.LIST>
+                </VOUCHER>
+
+                <VOUCHER>
+                    <DATE>20250510</DATE>
+                    <VOUCHERTYPENAME>Payment</VOUCHERTYPENAME>
+                    <VOUCHERNUMBER>PMT-001</VOUCHERNUMBER>
+                    <PARTYLEDGERNAME>Mumbai Suppliers</PARTYLEDGERNAME>
+                    <NARRATION>Payment to Mumbai Suppliers via NEFT</NARRATION>
+                    <ALLLEDGERENTRIES.LIST>
+                        <LEDGERNAME>Mumbai Suppliers</LEDGERNAME>
+                        <AMOUNT>-500000</AMOUNT>
+                    </ALLLEDGERENTRIES.LIST>
+                    <ALLLEDGERENTRIES.LIST>
+                        <LEDGERNAME>HDFC Bank</LEDGERNAME>
+                        <AMOUNT>500000</AMOUNT>
+                    </ALLLEDGERENTRIES.LIST>
+                </VOUCHER>
+            </TALLYMESSAGE>
+        </DATA>
+    </BODY>
+</ENVELOPE>

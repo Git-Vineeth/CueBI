@@ -10,7 +10,7 @@ load_dotenv()
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from apps.api.api.routes import health, connections, query, schema
+from apps.api.api.routes import health, connections, query, schema, tally
 
 
 @asynccontextmanager
@@ -46,3 +46,4 @@ app.include_router(health.router, tags=["Health"])
 app.include_router(connections.router, prefix="/api/connections", tags=["Connections"])
 app.include_router(query.router, prefix="/api", tags=["Query"])
 app.include_router(schema.router, prefix="/api/schema", tags=["Schema"])
+app.include_router(tally.router, prefix="/api/tally", tags=["Tally"])
