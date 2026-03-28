@@ -62,7 +62,7 @@ export default function OnboardingPage() {
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-saffron-500 to-saffron-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-saffron-500/20">
             <Zap size={24} className="text-white" />
           </div>
-          <h1 className="font-display text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Welcome to BharatBI</h1>
+          <h1 className="font-sans text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Welcome to BharatBI</h1>
           <p className="text-sm mt-2" style={{ color: "var(--text-muted)" }}>
             Let's connect your first data source — takes under 2 minutes
           </p>
@@ -83,7 +83,7 @@ export default function OnboardingPage() {
             <div className="fade-in space-y-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 rounded-full bg-saffron-500 flex items-center justify-center text-white text-sm font-bold">1</div>
-                <h2 className="font-display text-base font-semibold" style={{ color: "var(--text-primary)" }}>What's your data source?</h2>
+                <h2 className="font-sans text-base font-semibold" style={{ color: "var(--text-primary)" }}>What's your data source?</h2>
               </div>
 
               <div className="space-y-2">
@@ -120,7 +120,7 @@ export default function OnboardingPage() {
             <div className="fade-in space-y-5">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 rounded-full bg-saffron-500 flex items-center justify-center text-white text-sm font-bold">2</div>
-                <h2 className="font-display text-base font-semibold" style={{ color: "var(--text-primary)" }}>Enter connection details</h2>
+                <h2 className="font-sans text-base font-semibold" style={{ color: "var(--text-primary)" }}>Enter connection details</h2>
               </div>
 
               {[
@@ -159,7 +159,7 @@ export default function OnboardingPage() {
             <div className="fade-in text-center space-y-6 py-4">
               <div className="flex items-center gap-3 justify-center mb-2">
                 <div className="w-8 h-8 rounded-full bg-saffron-500 flex items-center justify-center text-white text-sm font-bold">3</div>
-                <h2 className="font-display text-base font-semibold" style={{ color: "var(--text-primary)" }}>Sync your schema</h2>
+                <h2 className="font-sans text-base font-semibold" style={{ color: "var(--text-primary)" }}>Sync your schema</h2>
               </div>
               <p className="text-sm" style={{ color: "var(--text-muted)" }}>
                 BharatBI will read your table/column names and create a semantic index. Your actual data never leaves your database.
@@ -181,7 +181,7 @@ export default function OnboardingPage() {
                 <Check size={32} className="text-teal-400" />
               </div>
               <div>
-                <h2 className="font-display text-lg font-semibold" style={{ color: "var(--text-primary)" }}>You're all set! 🎉</h2>
+                <h2 className="font-sans text-lg font-semibold" style={{ color: "var(--text-primary)" }}>You're all set! 🎉</h2>
                 <p className="text-sm mt-2" style={{ color: "var(--text-muted)" }}>
                   {syncResult?.tables} tables and {syncResult?.columns} columns indexed.
                   {syncResult?.vectors_stored} vectors stored.

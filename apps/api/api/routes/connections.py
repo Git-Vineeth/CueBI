@@ -182,3 +182,22 @@ async def sync_connection(connection_id: UUID):
             )
             await db.commit()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{connection_id}")
+async def delete_connection(connection_id: str):
+    """Delete a connection and its schema metadata."""
+    async with async_session() as db:
+        result = await db.execute(
+            text("SELECT id FROM connections WHERE id = :id AND org_id = :org"),
+            {"id": connection_id, "org": DEV_ORG_ID},
+        )
+        if not result.scalars().first():
+            raise HTTPException(status_code=404, detail="Connection not found")
+
+        await db.execute(text("DELETE FROM schema_metadata WHERE connection_id = :id"), {"id": connection_id})
+        await db.execute(text("DELETE FROM queries WHERE connection_id = :id"), {"id": connection_id})
+        await db.execute(text("DELETE FROM connections WHERE id = :id"), {"id": connection_id})
+        await db.commit()
+
+    return {"deleted": True, "id": connection_id}

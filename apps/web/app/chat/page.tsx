@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { Send, Loader2, ChevronDown, ChevronUp, Copy, Check, Download, Sparkles, Pin, FileQuestion } from "lucide-react";
+import { Send, Loader2, ChevronDown, ChevronUp, Copy, Check, Download, Sparkles, Pin, FileQuestion, BarChart3 } from "lucide-react";
 import toast from "react-hot-toast";
 import Sidebar from "@/components/Sidebar";
 import { runQuery, listConnections, pinQuery, explainSQL, type QueryResponse, type Connection } from "@/lib/api";
@@ -9,21 +9,23 @@ import dynamic from "next/dynamic";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
-interface Message {
-  id: string;
-  type: "user" | "ai";
-  question?: string;
-  response?: QueryResponse;
-  error?: string;
-  loading?: boolean;
-}
+const CHART_THEME = {
+  color: ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)", "var(--chart-6)"],
+  backgroundColor: "transparent",
+  textStyle: { fontFamily: "Inter, system-ui, sans-serif", color: "var(--fg-2)" },
+  title: { textStyle: { color: "var(--fg-0)", fontSize: 13, fontWeight: 600 } },
+  legend: { textStyle: { color: "var(--fg-2)", fontSize: 11 } },
+  tooltip: { backgroundColor: "var(--bg-2)", borderColor: "var(--border)", textStyle: { color: "var(--fg-0)", fontSize: 12 } },
+};
+
+interface Message { id: string; type: "user" | "ai"; question?: string; response?: QueryResponse; error?: string; loading?: boolean; }
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [connections, setConnections] = useState<Connection[]>([]);
-  const { activeConnectionId, setActiveConnection, llmProvider } = useAppStore();
+  const { activeConnectionId, setActiveConnection, llmProvider, sidebarOpen } = useAppStore();
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -39,10 +41,10 @@ export default function ChatPage() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
-  const handleSubmit = async () => {
+  const submit = async () => {
     const q = input.trim();
     if (!q || loading) return;
-    if (!activeConnectionId) { toast.error("Select a data connection first"); return; }
+    if (!activeConnectionId) { toast.error("Select a data source first"); return; }
 
     const userMsg: Message = { id: Date.now().toString(), type: "user", question: q };
     const aiMsg: Message = { id: (Date.now() + 1).toString(), type: "ai", loading: true };
@@ -52,87 +54,72 @@ export default function ChatPage() {
 
     try {
       const res = await runQuery({ question: q, connection_id: activeConnectionId, llm_provider: llmProvider });
-      setMessages((prev) =>
-        prev.map((m) => (m.id === aiMsg.id ? { ...m, loading: false, response: res.data } : m))
-      );
+      setMessages((prev) => prev.map((m) => (m.id === aiMsg.id ? { ...m, loading: false, response: res.data } : m)));
     } catch (err: any) {
-      const errMsg = err?.response?.data?.detail || "Something went wrong";
-      setMessages((prev) =>
-        prev.map((m) => (m.id === aiMsg.id ? { ...m, loading: false, error: errMsg } : m))
-      );
+      setMessages((prev) => prev.map((m) => (m.id === aiMsg.id ? { ...m, loading: false, error: err?.response?.data?.detail || "Something went wrong" } : m)));
     }
     setLoading(false);
     inputRef.current?.focus();
   };
 
-  const handleSuggestion = (q: string) => { setInput(q); inputRef.current?.focus(); };
+  const useSuggestion = (q: string) => { setInput(q); inputRef.current?.focus(); };
+  const ml = sidebarOpen ? "ml-[200px]" : "ml-14";
 
   return (
     <div className="flex h-screen">
       <Sidebar />
-      <main className="flex-1 ml-56 flex flex-col h-screen">
+      <main className={`flex-1 ${ml} flex flex-col h-screen transition-all duration-150`}>
         {/* Header */}
-        <header className="h-14 flex items-center justify-between px-6 border-b shrink-0" style={{ background: "var(--bg-secondary)", borderColor: "var(--border)" }}>
-          <h1 className="font-display font-semibold text-sm" style={{ color: "var(--text-primary)" }}>Ask your data</h1>
-          <div className="flex items-center gap-3">
-            {/* LLM Provider Switcher */}
-            <div className="flex items-center gap-1 p-0.5 rounded-lg" style={{ background: "var(--bg-primary)" }}>
+        <header className="h-[52px] flex items-center justify-between px-5 border-b shrink-0" style={{ background: "var(--bg-1)", borderColor: "var(--border)" }}>
+          <div className="flex items-center gap-2">
+            <BarChart3 size={15} style={{ color: "var(--fg-3)" }} />
+            <h1 className="text-[13px] font-semibold" style={{ color: "var(--fg-0)" }}>Chat</h1>
+          </div>
+          <div className="flex items-center gap-2.5">
+            {/* LLM Toggle */}
+            <div className="flex items-center p-[3px] rounded-md" style={{ background: "var(--bg-0)" }}>
               {(["openai", "anthropic"] as const).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => useAppStore.getState().setLLMProvider(p)}
-                  className={`text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors ${llmProvider === p ? "bg-saffron-500 text-white" : ""}`}
-                  style={llmProvider !== p ? { color: "var(--text-muted)" } : {}}
-                >
+                <button key={p} onClick={() => useAppStore.getState().setLLMProvider(p)}
+                  className="text-[11px] font-medium px-2.5 py-[3px] rounded transition-all"
+                  style={{ background: llmProvider === p ? "var(--accent)" : "transparent", color: llmProvider === p ? "#fff" : "var(--fg-3)" }}>
                   {p === "openai" ? "GPT-4o" : "Claude"}
                 </button>
               ))}
             </div>
-            <select
-              value={activeConnectionId || ""}
-              onChange={(e) => setActiveConnection(e.target.value)}
-              className="text-xs px-3 py-1.5 rounded-md border bg-transparent cursor-pointer"
-              style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
-            >
-              {connections.length === 0 && <option value="">No connections</option>}
-              {connections.map((c) => (
-                <option key={c.id} value={c.id} style={{ background: "var(--bg-card)" }}>{c.name}</option>
-              ))}
+            {/* Connection selector */}
+            <select value={activeConnectionId || ""} onChange={(e) => setActiveConnection(e.target.value)} className="select text-[11px] py-1">
+              {connections.length === 0 && <option value="">No sources</option>}
+              {connections.map((c) => <option key={c.id} value={c.id} style={{ background: "var(--bg-2)" }}>{c.name}</option>)}
             </select>
           </div>
         </header>
 
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
-          {messages.length === 0 && <EmptyState onSuggestion={handleSuggestion} />}
-          {messages.map((m) =>
-            m.type === "user" ? (
-              <UserMessage key={m.id} question={m.question || ""} />
-            ) : (
-              <AIMessage key={m.id} msg={m} onSuggestion={handleSuggestion} />
-            )
-          )}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto">
+          <div className="max-w-[720px] mx-auto px-5 py-6 space-y-5">
+            {messages.length === 0 && <EmptyState onSuggestion={useSuggestion} />}
+            {messages.map((m) => m.type === "user"
+              ? <UserBubble key={m.id} text={m.question || ""} />
+              : <AIResponse key={m.id} msg={m} onSuggestion={useSuggestion} />
+            )}
+          </div>
         </div>
 
         {/* Input */}
-        <div className="shrink-0 px-6 pb-5 pt-2">
-          <div className="relative max-w-3xl mx-auto">
-            <textarea
-              ref={inputRef}
-              value={input}
+        <div className="shrink-0 border-t px-5 py-3" style={{ borderColor: "var(--border)", background: "var(--bg-1)" }}>
+          <div className="max-w-[720px] mx-auto relative">
+            <textarea ref={inputRef} value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
               placeholder="Ask a question about your data..."
               rows={1}
-              className="w-full resize-none rounded-xl px-5 py-3.5 pr-14 text-sm border focus:outline-none focus:ring-2 focus:ring-saffron-500/40 transition-shadow"
-              style={{ background: "var(--bg-card)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+              className="input pr-12 resize-none text-[13px] py-2.5"
+              style={{ minHeight: 42 }}
             />
-            <button
-              onClick={handleSubmit}
-              disabled={loading || !input.trim()}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-saffron-500 text-white disabled:opacity-30 hover:bg-saffron-600 transition-colors"
-            >
-              {loading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+            <button onClick={submit} disabled={loading || !input.trim()}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md flex items-center justify-center transition-all"
+              style={{ background: input.trim() ? "var(--accent)" : "var(--bg-3)", color: input.trim() ? "#fff" : "var(--fg-4)" }}>
+              {loading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
             </button>
           </div>
         </div>
@@ -141,23 +128,31 @@ export default function ChatPage() {
   );
 }
 
+/* ── Sub-components ── */
+
 function EmptyState({ onSuggestion }: { onSuggestion: (q: string) => void }) {
   const suggestions = [
     "Top 5 customers by revenue",
-    "Monthly revenue trend this financial year",
+    "Monthly revenue trend this FY",
     "Which payment mode is most popular?",
-    "Total GST collected this FY",
+    "Total GST collected this year",
+    "City-wise order distribution",
+    "Average order value by customer type",
   ];
   return (
-    <div className="flex flex-col items-center justify-center h-full fade-in">
-      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-saffron-500 to-saffron-600 flex items-center justify-center mb-5 shadow-lg shadow-saffron-500/20">
-        <Sparkles size={28} className="text-white" />
+    <div className="flex flex-col items-center justify-center pt-16 pb-8 fade-in">
+      <div className="empty-state-icon w-12 h-12 mb-4">
+        <Sparkles size={20} />
       </div>
-      <h2 className="font-display text-xl font-semibold mb-2" style={{ color: "var(--text-primary)" }}>Ask BharatBI anything</h2>
-      <p className="text-sm mb-8" style={{ color: "var(--text-muted)" }}>Type a question in plain English — no SQL needed</p>
-      <div className="grid grid-cols-2 gap-2.5 max-w-lg">
+      <h3 className="text-[15px] font-semibold mb-1" style={{ color: "var(--fg-0)" }}>Ask BharatBI</h3>
+      <p className="text-[13px] mb-6" style={{ color: "var(--fg-3)" }}>Type a question in plain English — no SQL needed</p>
+      <div className="grid grid-cols-2 gap-2 w-full max-w-md">
         {suggestions.map((s) => (
-          <button key={s} onClick={() => onSuggestion(s)} className="text-left text-xs px-4 py-3 rounded-lg border transition-colors hover:border-saffron-500/40" style={{ background: "var(--bg-card)", borderColor: "var(--border)", color: "var(--text-secondary)" }}>
+          <button key={s} onClick={() => onSuggestion(s)}
+            className="text-left text-[12px] px-3 py-2.5 rounded-lg border transition-all"
+            style={{ borderColor: "var(--border)", color: "var(--fg-2)" }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.background = "var(--accent-muted)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "transparent"; }}>
             {s}
           </button>
         ))}
@@ -166,87 +161,69 @@ function EmptyState({ onSuggestion }: { onSuggestion: (q: string) => void }) {
   );
 }
 
-function UserMessage({ question }: { question: string }) {
+function UserBubble({ text }: { text: string }) {
   return (
     <div className="flex justify-end fade-in">
-      <div className="max-w-lg px-4 py-2.5 rounded-2xl rounded-br-md text-sm" style={{ background: "var(--accent-soft)", color: "var(--text-primary)" }}>
-        {question}
+      <div className="max-w-[480px] text-[13px] px-4 py-2.5 rounded-xl rounded-br-sm" style={{ background: "var(--accent-muted)", color: "var(--fg-0)" }}>
+        {text}
       </div>
     </div>
   );
 }
 
-function AIMessage({ msg, onSuggestion }: { msg: Message; onSuggestion: (q: string) => void }) {
+function AIResponse({ msg, onSuggestion }: { msg: Message; onSuggestion: (q: string) => void }) {
   const [sqlOpen, setSqlOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  if (msg.loading) {
-    return (
-      <div className="fade-in space-y-3 max-w-2xl">
-        <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
-          <span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" />
-          <span className="ml-2">Thinking...</span>
-        </div>
-      </div>
-    );
-  }
+  if (msg.loading) return (
+    <div className="fade-in flex items-center gap-2 py-2">
+      <span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" />
+      <span className="text-[12px] ml-1" style={{ color: "var(--fg-3)" }}>Analyzing...</span>
+    </div>
+  );
 
-  if (msg.error) {
-    return (
-      <div className="fade-in max-w-2xl px-4 py-3 rounded-xl border text-sm" style={{ background: "rgba(239,68,68,0.08)", borderColor: "rgba(239,68,68,0.2)", color: "#fca5a5" }}>
-        {msg.error}
-      </div>
-    );
-  }
+  if (msg.error) return (
+    <div className="fade-in text-[13px] px-4 py-3 rounded-lg border" style={{ background: "var(--danger-muted)", borderColor: "rgba(239,68,68,0.2)", color: "#fca5a5" }}>
+      {msg.error}
+    </div>
+  );
 
   const r = msg.response!;
   const copySQL = () => { navigator.clipboard.writeText(r.sql); setCopied(true); setTimeout(() => setCopied(false), 2000); };
   const downloadCSV = () => {
-    const header = r.columns.join(",");
-    const rows = r.rows.map((row) => row.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob([header + "\n" + rows], { type: "text/csv" });
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "bharatbi_export.csv"; a.click();
+    const csv = [r.columns.join(","), ...r.rows.map((row) => row.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = "bharatbi_export.csv"; a.click();
   };
 
   return (
-    <div className="fade-in space-y-4 max-w-3xl">
+    <div className="fade-in space-y-3">
       {/* Summary */}
-      {r.summary && (
-        <div className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>{r.summary}</div>
-      )}
+      {r.summary && <p className="text-[13px] leading-relaxed" style={{ color: "var(--fg-1)" }}>{r.summary}</p>}
 
       {/* Chart */}
-      {r.chart && r.chart.echarts_option && r.chart.chart_type !== "table" && (
-        <div className="rounded-xl border p-4" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
-          <ReactECharts option={{ ...r.chart.echarts_option, backgroundColor: "transparent" }} style={{ height: 280 }} />
+      {r.chart?.echarts_option && r.chart.chart_type !== "table" && (
+        <div className="card p-4">
+          <ReactECharts option={{ ...CHART_THEME, ...r.chart.echarts_option, backgroundColor: "transparent" }} style={{ height: 260 }} />
         </div>
       )}
 
-      {/* Data Table */}
+      {/* Table */}
       {r.rows.length > 0 && (
-        <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
-          <div className="flex items-center justify-between px-4 py-2 border-b" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
-            <span className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>{r.row_count} rows · {r.duration_ms}ms</span>
-            <button onClick={downloadCSV} className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors" style={{ color: "var(--text-secondary)" }}>
-              <Download size={12} /> CSV
+        <div className="card overflow-hidden">
+          <div className="flex items-center justify-between px-3.5 py-2 border-b" style={{ borderColor: "var(--border)" }}>
+            <span className="text-[11px] font-medium" style={{ color: "var(--fg-3)" }}>
+              {r.row_count} row{r.row_count !== 1 ? "s" : ""} · {r.duration_ms}ms
+            </span>
+            <button onClick={downloadCSV} className="btn-ghost text-[11px] py-1 px-2">
+              <Download size={11} /> CSV
             </button>
           </div>
-          <div className="overflow-x-auto max-h-64">
-            <table className="w-full text-xs">
-              <thead>
-                <tr style={{ background: "var(--bg-secondary)" }}>
-                  {r.columns.map((c) => (
-                    <th key={c} className="text-left px-4 py-2 font-medium whitespace-nowrap" style={{ color: "var(--text-muted)" }}>{c}</th>
-                  ))}
-                </tr>
-              </thead>
+          <div className="overflow-x-auto max-h-56">
+            <table className="data-table">
+              <thead><tr>{r.columns.map((c) => <th key={c}>{c}</th>)}</tr></thead>
               <tbody>
                 {r.rows.slice(0, 50).map((row, i) => (
-                  <tr key={i} className="border-t" style={{ borderColor: "var(--border)" }}>
-                    {row.map((cell: any, j: number) => (
-                      <td key={j} className="px-4 py-2 whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>{String(cell)}</td>
-                    ))}
-                  </tr>
+                  <tr key={i}>{row.map((cell: any, j: number) => <td key={j}>{String(cell)}</td>)}</tr>
                 ))}
               </tbody>
             </table>
@@ -254,73 +231,56 @@ function AIMessage({ msg, onSuggestion }: { msg: Message; onSuggestion: (q: stri
         </div>
       )}
 
-      {/* SQL Block (collapsible) */}
-      <div className="rounded-xl border" style={{ borderColor: "var(--border)" }}>
-        <button onClick={() => setSqlOpen(!sqlOpen)} className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-medium" style={{ color: "var(--text-muted)" }}>
-          <span>SQL</span>
-          <div className="flex items-center gap-2">
-            <button onClick={(e) => { e.stopPropagation(); copySQL(); }} className="p-1 rounded hover:bg-[var(--bg-hover)] transition-colors">
-              {copied ? <Check size={12} className="text-teal-400" /> : <Copy size={12} />}
+      {/* SQL */}
+      <div className="card overflow-hidden">
+        <button onClick={() => setSqlOpen(!sqlOpen)} className="w-full flex items-center justify-between px-3.5 py-2 text-[11px] font-medium" style={{ color: "var(--fg-3)" }}>
+          <span>Generated SQL</span>
+          <div className="flex items-center gap-1.5">
+            <button onClick={(e) => { e.stopPropagation(); copySQL(); }} className="btn-ghost p-1">
+              {copied ? <Check size={11} className="text-success" /> : <Copy size={11} />}
             </button>
-            {sqlOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            {sqlOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
           </div>
         </button>
         {sqlOpen && (
-          <div className="px-4 pb-3 space-y-2">
-            <pre className="sql-block text-xs overflow-x-auto">{r.sql}</pre>
+          <div className="px-3.5 pb-3 space-y-2">
+            <pre className="sql-block">{r.sql}</pre>
             <ExplainButton sql={r.sql} />
           </div>
         )}
       </div>
 
-      {/* Pin to Dashboard */}
-      {r.query_id && (
-        <PinButton queryId={r.query_id} question={r.question} />
-      )}
-
-      {/* Follow-up suggestions */}
-      {r.suggested_questions?.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {r.suggested_questions.map((q) => (
-            <button key={q} onClick={() => onSuggestion(q)} className="text-xs px-3 py-1.5 rounded-full border transition-colors hover:border-saffron-500/40" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
-              {q}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Actions row — Pin + Follow-ups */}
+      <div className="flex items-center flex-wrap gap-2">
+        {r.query_id && <PinButton queryId={r.query_id} question={r.question} />}
+        {r.suggested_questions?.map((q) => (
+          <button key={q} onClick={() => onSuggestion(q)}
+            className="text-[11px] px-3 py-1.5 rounded-full border transition-all"
+            style={{ borderColor: "var(--border)", color: "var(--fg-2)" }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--border-hover)"; e.currentTarget.style.background = "var(--bg-3)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "transparent"; }}>
+            {q}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
 
 function PinButton({ queryId, question }: { queryId: string; question: string }) {
   const [pinned, setPinned] = useState(false);
-  const [pinning, setPinning] = useState(false);
-
+  const [busy, setBusy] = useState(false);
   const handlePin = async () => {
-    setPinning(true);
-    try {
-      await pinQuery(queryId, question);
-      setPinned(true);
-      toast.success("Pinned to Dashboard!");
-    } catch (err: any) {
-      if (err?.response?.data?.detail?.includes("Already")) {
-        setPinned(true);
-        toast("Already pinned", { icon: "📌" });
-      } else {
-        toast.error("Failed to pin");
-      }
-    }
-    setPinning(false);
+    setBusy(true);
+    try { await pinQuery(queryId, question); setPinned(true); toast.success("Pinned to Dashboard"); }
+    catch (err: any) { if (err?.response?.data?.detail?.includes("Already")) { setPinned(true); } else toast.error("Failed to pin"); }
+    setBusy(false);
   };
-
   return (
-    <button
-      onClick={handlePin}
-      disabled={pinned || pinning}
-      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors hover:border-saffron-500/40 disabled:opacity-50"
-      style={{ borderColor: "var(--border)", color: pinned ? "var(--teal)" : "var(--text-secondary)" }}
-    >
-      <Pin size={12} /> {pinned ? "Pinned" : pinning ? "Pinning..." : "Pin to Dashboard"}
+    <button onClick={handlePin} disabled={pinned || busy}
+      className="btn-ghost text-[11px] rounded-full px-3 py-1.5 border"
+      style={{ borderColor: pinned ? "var(--success)" : "var(--border)", color: pinned ? "var(--success)" : "var(--fg-2)" }}>
+      <Pin size={11} /> {pinned ? "Pinned" : busy ? "..." : "Pin"}
     </button>
   );
 }
@@ -328,34 +288,23 @@ function PinButton({ queryId, question }: { queryId: string; question: string })
 function ExplainButton({ sql }: { sql: string }) {
   const [explanation, setExplanation] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const handleExplain = async () => {
+  const handle = async () => {
     setLoading(true);
-    try {
-      const res = await explainSQL(sql);
-      setExplanation(res.data.explanation);
-    } catch {
-      toast.error("Could not explain SQL");
-    }
+    try { const res = await explainSQL(sql); setExplanation(res.data.explanation); }
+    catch { toast.error("Could not explain"); }
     setLoading(false);
   };
-
-  if (explanation) {
-    return (
-      <div className="text-xs leading-relaxed p-3 rounded-lg" style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}>
-        <div className="flex items-center gap-1.5 mb-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-dim)" }}>
-          <FileQuestion size={11} /> Plain English Explanation
-        </div>
-        {explanation}
+  if (explanation) return (
+    <div className="text-[12px] leading-relaxed p-3 rounded-md" style={{ background: "var(--bg-0)", color: "var(--fg-2)" }}>
+      <div className="text-[10px] font-semibold uppercase tracking-wider mb-1.5 flex items-center gap-1" style={{ color: "var(--fg-4)" }}>
+        <FileQuestion size={10} /> Explanation
       </div>
-    );
-  }
-
+      {explanation}
+    </div>
+  );
   return (
-    <button onClick={handleExplain} disabled={loading}
-      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors hover:border-[var(--accent)]/40"
-      style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}>
-      {loading ? <Loader2 size={11} className="animate-spin" /> : <FileQuestion size={11} />}
+    <button onClick={handle} disabled={loading} className="btn-ghost text-[11px] px-2.5 py-1">
+      {loading ? <Loader2 size={10} className="animate-spin" /> : <FileQuestion size={10} />}
       {loading ? "Explaining..." : "Explain this SQL"}
     </button>
   );

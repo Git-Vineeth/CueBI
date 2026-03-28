@@ -26,7 +26,7 @@ from packages.core.embedder import store_chunks
 router = APIRouter()
 
 DEV_ORG_ID = "00000000-0000-0000-0000-000000000001"
-STAGING_DB_URL = "postgresql://bharatbi:bharatbi_dev@postgres:5432/bharatbi"
+STAGING_DB_URL = os.getenv("SYNC_DATABASE_URL", "postgresql://bharatbi:bharatbi_dev@postgres:5432/bharatbi")
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")

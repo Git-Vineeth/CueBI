@@ -53,14 +53,14 @@ export default function TeamsPage() {
   return (
     <div className="flex h-screen">
       <Sidebar />
-      <main className="flex-1 ml-56 overflow-y-auto">
+      <main className="flex-1 ml-[200px] overflow-y-auto">
         <div className="max-w-3xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="font-display text-xl font-semibold" style={{ color: "var(--text-primary)" }}>Team</h1>
+              <h1 className="font-sans text-xl font-semibold" style={{ color: "var(--text-primary)" }}>Team</h1>
               <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>{members.length} member{members.length !== 1 ? "s" : ""}</p>
             </div>
-            <button onClick={() => setShowInvite(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: "var(--accent)" }}>
+            <button onClick={() => setShowInvite(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white" className="btn btn-primary" style={{}}>
               <Plus size={16} /> Invite Member
             </button>
           </div>
@@ -97,7 +97,7 @@ export default function TeamsPage() {
                     })}
                   </div>
                 </div>
-                <button onClick={handleInvite} disabled={sending} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white" style={{ background: "var(--accent)" }}>
+                <button onClick={handleInvite} disabled={sending} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white" className="btn btn-primary" style={{}}>
                   {sending ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />} Send Invite
                 </button>
               </div>

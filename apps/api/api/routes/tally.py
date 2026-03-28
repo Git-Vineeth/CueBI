@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 """Tally Upload API — upload Tally XML or Excel, auto-parse and create staging tables."""
+import os
 import asyncpg
 from uuid import UUID
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
@@ -17,7 +18,7 @@ router = APIRouter()
 DEV_ORG_ID = "00000000-0000-0000-0000-000000000001"
 
 # Tally staging uses the app's own Postgres (demo-db is for SQL connectors)
-STAGING_DB_URL = "postgresql://bharatbi:bharatbi_dev@postgres:5432/bharatbi"
+STAGING_DB_URL = os.getenv("SYNC_DATABASE_URL", "postgresql://bharatbi:bharatbi_dev@postgres:5432/bharatbi")
 
 
 @router.post("/upload")

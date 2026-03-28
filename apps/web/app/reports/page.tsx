@@ -49,14 +49,14 @@ export default function ReportsPage() {
   return (
     <div className="flex h-screen">
       <Sidebar />
-      <main className="flex-1 ml-56 overflow-y-auto">
+      <main className="flex-1 ml-[200px] overflow-y-auto">
         <div className="max-w-3xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="font-display text-xl font-semibold" style={{ color: "var(--text-primary)" }}>Scheduled Reports</h1>
+              <h1 className="font-sans text-xl font-semibold" style={{ color: "var(--text-primary)" }}>Scheduled Reports</h1>
               <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Run queries automatically and email results on a schedule</p>
             </div>
-            <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: "var(--accent)" }}>
+            <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white" className="btn btn-primary" style={{}}>
               <Plus size={16} /> New Schedule
             </button>
           </div>
@@ -107,7 +107,7 @@ export default function ReportsPage() {
                   </select>
                   <div className="flex-1" />
                   <button onClick={() => setShowForm(false)} className="btn-ghost px-4 py-2 text-sm">Cancel</button>
-                  <button onClick={handleCreate} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: "var(--accent)" }}>
+                  <button onClick={handleCreate} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white" className="btn btn-primary" style={{}}>
                     {saving ? <Loader2 size={14} className="animate-spin" /> : <CalendarClock size={14} />} Create
                   </button>
                 </div>

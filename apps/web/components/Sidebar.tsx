@@ -1,83 +1,97 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageSquare, Database, LayoutDashboard, History, Table2, Zap, CalendarClock, Bell, Users } from "lucide-react";
+import { MessageSquare, Database, LayoutDashboard, History, Table2, CalendarClock, Bell, Users, Zap, Moon, Sun } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 
-const NAV = [
+const MAIN_NAV = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
-  { href: "/connections", label: "Connections", icon: Database },
+  { href: "/connections", label: "Sources", icon: Database },
   { href: "/schema", label: "Schema", icon: Table2 },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/history", label: "History", icon: History },
-  { section: "Automate" },
+];
+
+const AUTO_NAV = [
   { href: "/reports", label: "Reports", icon: CalendarClock },
   { href: "/alerts", label: "Alerts", icon: Bell },
-  { section: "Settings" },
+];
+
+const SETTINGS_NAV = [
   { href: "/teams", label: "Team", icon: Users },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { sidebarOpen } = useAppStore();
+  const { sidebarOpen, theme, toggleTheme } = useAppStore();
+
+  const NavItem = ({ href, label, icon: Icon }: { href: string; label: string; icon: any }) => {
+    const active = pathname === href || pathname?.startsWith(href + "/");
+    return (
+      <Link
+        href={href}
+        className="flex items-center gap-2.5 px-3 py-[7px] rounded-md text-[13px] font-medium transition-all duration-100"
+        style={{
+          background: active ? "var(--accent-muted)" : "transparent",
+          color: active ? "var(--accent)" : "var(--fg-2)",
+        }}
+        onMouseEnter={(e) => { if (!active) { e.currentTarget.style.background = "var(--bg-3)"; e.currentTarget.style.color = "var(--fg-1)"; } }}
+        onMouseLeave={(e) => { if (!active) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--fg-2)"; } }}
+      >
+        <Icon size={15} strokeWidth={active ? 2 : 1.75} />
+        {sidebarOpen && label}
+      </Link>
+    );
+  };
+
+  const Section = ({ label }: { label: string }) => (
+    sidebarOpen ? (
+      <div className="text-[10px] font-semibold uppercase tracking-[0.08em] px-3 pt-5 pb-1.5" style={{ color: "var(--fg-4)" }}>
+        {label}
+      </div>
+    ) : <div className="mx-3 my-3" style={{ height: 1, background: "var(--border)" }} />
+  );
 
   return (
     <aside
-      className={`fixed top-0 left-0 h-screen flex flex-col border-r transition-all duration-200 z-30 ${
-        sidebarOpen ? "w-56" : "w-16"
-      }`}
-      style={{ background: "var(--bg-secondary)", borderColor: "var(--border)" }}
+      className={`fixed top-0 left-0 h-screen flex flex-col border-r z-30 transition-all duration-150 ${sidebarOpen ? "w-[200px]" : "w-14"}`}
+      style={{ background: "var(--bg-1)", borderColor: "var(--border)" }}
     >
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 h-14 border-b" style={{ borderColor: "var(--border)" }}>
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "var(--accent)" }}>
-          <Zap size={16} className="text-white" />
+      <div className="flex items-center gap-2 px-3 h-[52px] shrink-0">
+        <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ background: "var(--accent)" }}>
+          <Zap size={14} color="#fff" />
         </div>
         {sidebarOpen && (
-          <span className="font-sans font-bold text-[15px] tracking-tight" style={{ color: "var(--text-primary)" }}>
+          <span className="font-semibold text-[14px] tracking-[-0.01em]" style={{ color: "var(--fg-0)" }}>
             BharatBI
           </span>
         )}
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
-        {NAV.map((item, i) => {
-          if ("section" in item) {
-            return sidebarOpen ? (
-              <div key={i} className="text-[10px] font-semibold uppercase tracking-widest px-3 pt-5 pb-1" style={{ color: "var(--text-dim)" }}>
-                {item.section}
-              </div>
-            ) : <div key={i} className="h-px mx-3 my-3" style={{ background: "var(--border)" }} />;
-          }
-
-          const { href, label, icon: Icon } = item;
-          const active = pathname === href || pathname?.startsWith(href + "/");
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors`}
-              style={{
-                background: active ? "var(--accent-soft)" : undefined,
-                color: active ? "var(--accent)" : "var(--text-secondary)",
-              }}
-              onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--bg-hover)"; }}
-              onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
-            >
-              <Icon size={17} />
-              {sidebarOpen && label}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 px-2 py-2 space-y-[2px] overflow-y-auto">
+        {MAIN_NAV.map((item) => <NavItem key={item.href} {...item} />)}
+        <Section label="Automate" />
+        {AUTO_NAV.map((item) => <NavItem key={item.href} {...item} />)}
+        <Section label="Settings" />
+        {SETTINGS_NAV.map((item) => <NavItem key={item.href} {...item} />)}
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t" style={{ borderColor: "var(--border)" }}>
+      <div className="px-2 py-3 border-t shrink-0" style={{ borderColor: "var(--border)" }}>
+        <button
+          onClick={toggleTheme}
+          className="w-full flex items-center gap-2.5 px-3 py-[7px] rounded-md text-[12px] transition-colors"
+          style={{ color: "var(--fg-3)" }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-3)"; e.currentTarget.style.color = "var(--fg-1)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--fg-3)"; }}
+        >
+          {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+          {sidebarOpen && (theme === "dark" ? "Light mode" : "Dark mode")}
+        </button>
         {sidebarOpen && (
-          <div className="text-[10px] px-2" style={{ color: "var(--text-dim)" }}>
-            Made in India 🇮🇳
-          </div>
+          <div className="text-[10px] px-3 mt-2" style={{ color: "var(--fg-4)" }}>v0.2 · India 🇮🇳</div>
         )}
       </div>
     </aside>
