@@ -58,7 +58,7 @@ CueBI is an internal GenBI (Generative BI) platform built for Cuemath's data and
 
 ```bash
 git clone <internal-repo-url>
-cd bharatbi
+cd cuebi
 cp .env.example .env
 # Edit .env — add OPENAI_API_KEY or ANTHROPIC_API_KEY
 docker-compose up --build
@@ -78,7 +78,7 @@ PYTHONPATH=. python3 -m pytest tests/ -m "not integration" -v
 ## Project Structure
 
 ```
-bharatbi/
+cuebi/
 ├── apps/
 │   ├── api/               # FastAPI backend
 │   │   ├── routes/        # API endpoints
