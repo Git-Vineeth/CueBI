@@ -57,7 +57,7 @@ CueBI is an internal GenBI (Generative BI) platform built for Cuemath's data and
 **Prerequisites:** Docker, Docker Compose
 
 ```bash
-git clone <internal-repo-url>
+git clone https://github.com/Git-Vineeth/CueBI
 cd cuebi
 cp .env.example .env
 # Edit .env — add OPENAI_API_KEY or ANTHROPIC_API_KEY
