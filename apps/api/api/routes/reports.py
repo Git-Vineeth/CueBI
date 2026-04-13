@@ -32,7 +32,7 @@ class ScheduleCreate(BaseModel):
     cron_expression: str  # e.g., "0 9 * * 1" = every Monday 9am
     recipients: list[str] = []  # email addresses
     format: str = "csv"  # csv or pdf
-    timezone: str = "Asia/Kolkata"
+    timezone: str = "UTC"
     is_active: bool = True
 
 
@@ -58,7 +58,7 @@ async def create_schedule(req: ScheduleCreate):
             {
                 "org_id": DEV_ORG_ID, "name": req.name, "qid": req.query_id,
                 "cid": str(query_row["connection_id"]),
-                "cron": req.cron_expression, "recipients": json.dumps(req.recipients),
+                "cron": req.cron_expression, "recipients": req.recipients,
                 "fmt": req.format, "tz": req.timezone, "active": req.is_active,
             },
         )
@@ -156,7 +156,7 @@ async def create_alert(req: AlertCreate):
                 "cid": str(query_row["connection_id"]),
                 "condition": req.condition, "threshold": req.threshold,
                 "col": req.column_name, "interval": req.check_interval_minutes,
-                "emails": json.dumps(req.notify_emails), "webhook": req.notify_webhook,
+                "emails": req.notify_emails, "webhook": req.notify_webhook,
                 "active": req.is_active,
             },
         )

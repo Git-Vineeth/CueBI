@@ -1,5 +1,5 @@
 -- =============================================================================
--- BharatBI App Schema — internal tables for the platform itself
+-- CueBI App Schema — internal tables for the platform itself
 -- This is NOT the user's data — this stores connections, queries, metadata.
 -- =============================================================================
 
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS connections (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     org_id UUID REFERENCES organizations(id),
     name VARCHAR(100) NOT NULL,
-    conn_type VARCHAR(30) NOT NULL,  -- postgresql, mysql, google_sheets, tally, zoho
+    conn_type VARCHAR(30) NOT NULL,  -- postgresql, mysql, redshift, rds_postgresql, rds_mysql
     host VARCHAR(255),
     port INTEGER,
     database_name VARCHAR(100),
@@ -86,6 +86,52 @@ CREATE TABLE IF NOT EXISTS saved_questions (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Scheduled reports
+CREATE TABLE IF NOT EXISTS scheduled_reports (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    org_id UUID REFERENCES organizations(id),
+    name VARCHAR(200) NOT NULL,
+    query_id UUID REFERENCES queries(id),
+    connection_id UUID REFERENCES connections(id),
+    cron_expression VARCHAR(100) NOT NULL,
+    recipients TEXT[],
+    format VARCHAR(20) DEFAULT 'csv',
+    timezone VARCHAR(50) DEFAULT 'UTC',
+    is_active BOOLEAN DEFAULT TRUE,
+    last_run_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Alerts
+CREATE TABLE IF NOT EXISTS alerts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    org_id UUID REFERENCES organizations(id),
+    name VARCHAR(200) NOT NULL,
+    query_id UUID REFERENCES queries(id),
+    connection_id UUID REFERENCES connections(id),
+    condition VARCHAR(20) NOT NULL,  -- gt, lt, eq
+    threshold NUMERIC NOT NULL,
+    column_name VARCHAR(100) NOT NULL,
+    check_interval_minutes INTEGER DEFAULT 60,
+    notify_emails TEXT[],
+    notify_webhook TEXT DEFAULT '',
+    is_active BOOLEAN DEFAULT TRUE,
+    last_triggered_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Team invites
+CREATE TABLE IF NOT EXISTS team_invites (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    org_id UUID REFERENCES organizations(id),
+    email VARCHAR(255) NOT NULL,
+    role VARCHAR(20) DEFAULT 'analyst',
+    status VARCHAR(20) DEFAULT 'pending',
+    invited_by UUID REFERENCES users(id),
+    expires_at TIMESTAMP DEFAULT NOW() + INTERVAL '7 days',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- API keys (user-provided OpenAI / Anthropic keys, encrypted)
 CREATE TABLE IF NOT EXISTS api_keys (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -102,5 +148,5 @@ INSERT INTO organizations (id, name, plan) VALUES
 ON CONFLICT DO NOTHING;
 
 INSERT INTO users (id, email, name, org_id, role) VALUES
-    ('00000000-0000-0000-0000-000000000002', 'dev@bharatbi.in', 'Dev User', '00000000-0000-0000-0000-000000000001', 'admin')
+    ('00000000-0000-0000-0000-000000000002', 'dev@cuemath.com', 'Dev User', '00000000-0000-0000-0000-000000000001', 'admin')
 ON CONFLICT DO NOTHING;

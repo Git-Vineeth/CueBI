@@ -35,16 +35,9 @@ async def explain_sql(req: ExplainRequest):
     )
 
     try:
-        response = await llm.summarize(
-            question="Explain SQL", columns=[], rows=[], sql=req.sql
-        )
-        # If summarize doesn't work well for this, use generate directly
-        if not response or len(response) < 20:
-            if hasattr(llm, 'generate'):
-                response = await llm.generate(prompt)
-            else:
-                response = "Unable to generate explanation."
+        result = await llm.summarize(question=prompt, columns=[], rows=[])
+        explanation = result.summary.strip() if result.summary else "Unable to generate explanation."
     except Exception as e:
-        response = f"Could not generate explanation: {str(e)}"
+        explanation = f"Could not generate explanation: {str(e)}"
 
-    return {"sql": req.sql, "explanation": response}
+    return {"sql": req.sql, "explanation": explanation}
