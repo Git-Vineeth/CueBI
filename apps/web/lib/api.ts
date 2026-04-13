@@ -96,23 +96,6 @@ export const listQueries = (limit?: number) => api.get(`/api/queries?limit=${lim
 // ── Schema ──
 export const getSchema = (connectionId: string) => api.get<SchemaTable[]>(`/api/schema/${connectionId}`);
 
-// ── Tally ──
-export const uploadTally = (file: File, name: string) => {
-  const fd = new FormData();
-  fd.append("file", file);
-  fd.append("name", name);
-  return api.post("/api/tally/upload", fd);
-};
-
-// ── Sheets ──
-export const uploadCSV = (file: File, name: string, sheetName?: string) => {
-  const fd = new FormData();
-  fd.append("file", file);
-  fd.append("name", name);
-  fd.append("sheet_name", sheetName || "sheet1");
-  return api.post("/api/sheets/upload-csv", fd);
-};
-
 // ── Dashboard ──
 export const pinQuery = (queryId: string, name?: string) =>
   api.post("/api/dashboard/pin", { query_id: queryId, name: name || "" });

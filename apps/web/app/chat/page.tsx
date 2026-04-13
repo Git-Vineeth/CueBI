@@ -144,7 +144,7 @@ function EmptyState({ onSuggestion }: { onSuggestion: (q: string) => void }) {
       <div className="empty-state-icon w-12 h-12 mb-4">
         <Sparkles size={20} />
       </div>
-      <h3 className="text-[15px] font-semibold mb-1" style={{ color: "var(--fg-0)" }}>Ask BharatBI</h3>
+      <h3 className="text-[15px] font-semibold mb-1" style={{ color: "var(--fg-0)" }}>Ask CueBI</h3>
       <p className="text-[13px] mb-6" style={{ color: "var(--fg-3)" }}>Type a question in plain English — no SQL needed</p>
       <div className="grid grid-cols-2 gap-2 w-full max-w-md">
         {suggestions.map((s) => (
@@ -192,7 +192,7 @@ function AIResponse({ msg, onSuggestion }: { msg: Message; onSuggestion: (q: str
   const copySQL = () => { navigator.clipboard.writeText(r.sql); setCopied(true); setTimeout(() => setCopied(false), 2000); };
   const downloadCSV = () => {
     const csv = [r.columns.join(","), ...r.rows.map((row) => row.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(","))].join("\n");
-    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = "bharatbi_export.csv"; a.click();
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = "cuebi_export.csv"; a.click();
   };
 
   return (

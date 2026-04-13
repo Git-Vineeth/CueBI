@@ -1,6 +1,6 @@
 from __future__ import annotations
 """
-BharatBI — OpenAI LLM Provider
+CueBI — OpenAI LLM Provider
 Implements BaseLLMProvider using GPT-4o.
 
 Temperature is always 0.0 for SQL generation — we want deterministic output.
@@ -94,10 +94,9 @@ class OpenAIProvider(BaseLLMProvider):
             for i, item in enumerate(schema_items)
         )
 
-        prompt = f"""You are documenting a {dialect} database for Indian business users.
+        prompt = f"""You are documenting a {dialect} database for business users.
 For each column below, write a SHORT (max 10 words) plain English description of what it contains.
 Focus on business meaning, not technical type.
-Use Indian business context (e.g. "GST amount", "invoice date", "party name").
 
 {items_text}
 

@@ -1,16 +1,10 @@
 from __future__ import annotations
 """
-BharatBI — Prompt Builder
+CueBI — Prompt Builder
 Assembles the final prompt sent to the LLM for SQL generation.
 
 This is the most important file for SQL accuracy.
 Better prompts = better SQL = happier users.
-
-India-specific considerations baked in:
-- Indian fiscal year (April–March, not Jan–Dec)
-- INR as default currency
-- Common Indian business terminology
-- GST awareness
 """
 
 from datetime import date
@@ -19,31 +13,28 @@ from typing import Optional
 
 # ── System prompt ─────────────────────────────────────────────
 
-SYSTEM_PROMPT = """You are BharatBI, an expert SQL analyst for Indian businesses.
+SYSTEM_PROMPT = """You are CueBI, an expert SQL analyst.
 Your job: convert a natural language question into a valid SQL query.
 
 STRICT RULES:
 1. Return ONLY valid JSON in this exact format:
    {{"sql": "SELECT ...", "explanation": "One sentence in plain English"}}
 2. Use ONLY the tables and columns listed in SCHEMA below. No invented columns.
-3. Use the database dialect specified (postgresql or mysql). No dialect mixing.
-4. For monetary values, assume Indian Rupees (INR) unless stated otherwise.
-5. Indian fiscal year runs April 1 to March 31 (NOT January–December).
-   When user says "this year", "last year", "FY", interpret accordingly.
-6. Always add LIMIT 1000 unless the user asks for a different number.
-7. For aggregations, always alias the result columns clearly (e.g. AS total_revenue).
-8. If a question is ambiguous, pick the most reasonable interpretation.
-9. Never generate INSERT, UPDATE, DELETE, DROP, or DDL statements.
-10. Do not use markdown code fences in your response. Pure JSON only.
+3. Use the database dialect specified (postgresql, mysql, or redshift). No dialect mixing.
+4. Always add LIMIT 1000 unless the user asks for a different number.
+5. For aggregations, always alias the result columns clearly (e.g. AS total_revenue).
+6. If a question is ambiguous, pick the most reasonable interpretation.
+7. Never generate INSERT, UPDATE, DELETE, DROP, or DDL statements.
+8. Do not use markdown code fences in your response. Pure JSON only.
 """
 
-# ── Few-shot examples (India-specific) ───────────────────────
+# ── Few-shot examples ─────────────────────────────────────────
 
 FEW_SHOT_EXAMPLES = [
     {
-        "question": "What is the total sales amount this financial year?",
-        "sql": "SELECT SUM(amount) AS total_sales_inr FROM orders WHERE created_at >= '2024-04-01' AND created_at < '2025-04-01'",
-        "explanation": "Sum of all order amounts for the current Indian financial year (April 2024 to March 2025).",
+        "question": "What is the total revenue this month?",
+        "sql": "SELECT SUM(amount) AS total_revenue FROM orders WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE) AND created_at < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'",
+        "explanation": "Sum of all order amounts for the current calendar month.",
     },
     {
         "question": "Top 5 customers by revenue",
@@ -78,7 +69,7 @@ def build_sql_prompt(
     Args:
         question: The user's natural language question
         schema_chunks: Retrieved schema chunks from Qdrant (top-k)
-        dialect: 'postgresql' or 'mysql'
+        dialect: 'postgresql', 'mysql', or 'redshift'
         few_shot_count: How many few-shot examples to include
         extra_context: Any additional context (e.g. previous error message)
 
@@ -86,20 +77,12 @@ def build_sql_prompt(
         The full prompt string to send to the LLM.
     """
     today = date.today()
-    # Calculate current Indian fiscal year
-    if today.month >= 4:
-        fy_start = date(today.year, 4, 1)
-        fy_end   = date(today.year + 1, 3, 31)
-    else:
-        fy_start = date(today.year - 1, 4, 1)
-        fy_end   = date(today.year, 3, 31)
 
     prompt_parts = []
 
     # 1. Date context
     prompt_parts.append(
         f"CURRENT DATE: {today.isoformat()}\n"
-        f"CURRENT INDIAN FISCAL YEAR: {fy_start.isoformat()} to {fy_end.isoformat()}\n"
         f"DATABASE DIALECT: {dialect.upper()}\n"
     )
 
@@ -109,7 +92,7 @@ def build_sql_prompt(
         prompt_parts.append(f"\n---\n{chunk.get('text', '')}")
     prompt_parts.append("---")
 
-    # 3. Few-shot examples (India-specific)
+    # 3. Few-shot examples
     prompt_parts.append("\nEXAMPLES OF GOOD SQL GENERATION:")
     for ex in FEW_SHOT_EXAMPLES[:few_shot_count]:
         prompt_parts.append(
@@ -138,7 +121,6 @@ def build_summary_prompt(
     """
     Assembles the prompt for generating a plain English result summary.
     """
-    # Format result as a small markdown table for context
     header = " | ".join(columns)
     separator = " | ".join(["---"] * len(columns))
     data_rows = []
@@ -153,8 +135,7 @@ The query returned this data:
 {"[... and more rows]" if len(rows) > max_rows else ""}
 
 Write a 2-3 sentence plain English summary of what this data shows.
-Focus on the key insight. Use Indian business context where relevant (crore, lakh, FY, GST etc).
-Be direct and specific — mention actual numbers from the data.
+Focus on the key insight. Be direct and specific — mention actual numbers from the data.
 Do not start with "The data shows" or "Based on the query".
 Then suggest 3 short follow-up questions the user might ask next.
 

@@ -31,7 +31,7 @@ export const useAppStore = create<AppState>()(
       }),
     }),
     {
-      name: "bharatbi-settings",
+      name: "cuebi-settings",
       partialize: (state) => ({
         activeConnectionId: state.activeConnectionId,
         llmProvider: state.llmProvider,
@@ -44,7 +44,7 @@ export const useAppStore = create<AppState>()(
 
 // Apply theme on load
 if (typeof window !== "undefined") {
-  const stored = localStorage.getItem("bharatbi-settings");
+  const stored = localStorage.getItem("cuebi-settings");
   if (stored) {
     try {
       const parsed = JSON.parse(stored);
@@ -54,13 +54,8 @@ if (typeof window !== "undefined") {
   }
 }
 
-// Indian number formatting
-export function formatINR(n: number): string {
-  if (n === null || n === undefined || isNaN(n)) return "₹0";
-  const abs = Math.abs(n);
-  const sign = n < 0 ? "-" : "";
-  if (abs >= 1_00_00_000) return `${sign}₹${(abs / 1_00_00_000).toFixed(2)} Cr`;
-  if (abs >= 1_00_000) return `${sign}₹${(abs / 1_00_000).toFixed(2)} L`;
-  if (abs >= 1_000) return `${sign}₹${abs.toLocaleString("en-IN")}`;
-  return `${sign}₹${abs}`;
+// Number formatting utility
+export function formatNumber(n: number): string {
+  if (n === null || n === undefined || isNaN(n)) return "0";
+  return n.toLocaleString("en-US");
 }

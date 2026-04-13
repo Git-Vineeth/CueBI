@@ -1,6 +1,6 @@
 from __future__ import annotations
 """
-BharatBI — Anthropic LLM Provider
+CueBI — Anthropic LLM Provider
 Implements BaseLLMProvider using Claude Sonnet.
 """
 
@@ -94,9 +94,8 @@ class AnthropicProvider(BaseLLMProvider):
             for i, item in enumerate(schema_items)
         )
 
-        prompt = f"""You are documenting a {dialect} database for Indian business users.
+        prompt = f"""You are documenting a {dialect} database for business users.
 For each item below, write a SHORT (max 10 words) plain English description.
-Use Indian business context where relevant.
 
 {items_text}
 

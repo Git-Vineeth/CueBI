@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────
-#  BharatBI — Local Development Docker Compose
+#  CueBI — Local Development Docker Compose
 #  Usage: docker-compose up
 #  All services start together. Hot-reload enabled for api & web.
 # ─────────────────────────────────────────────────────────────
@@ -9,19 +9,19 @@ services:
   # ── PostgreSQL (app DB + demo data) ──
   postgres:
     image: postgres:16-alpine
-    container_name: bharatbi-postgres
+    container_name: cuebi-postgres
     environment:
-      POSTGRES_USER: bharatbi
-      POSTGRES_PASSWORD: bharatbi_dev
-      POSTGRES_DB: bharatbi
+      POSTGRES_USER: cuebi
+      POSTGRES_PASSWORD: cuebi_dev
+      POSTGRES_DB: cuebi
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql
-      - ./examples/sample_indian_ecommerce.sql:/docker-entrypoint-initdb.d/02-demo-data.sql
+      - ./examples/sample_data.sql:/docker-entrypoint-initdb.d/02-demo-data.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bharatbi -d bharatbi"]
+      test: ["CMD-SHELL", "pg_isready -U cuebi -d cuebi"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -29,7 +29,7 @@ services:
   # ── Demo DB (user's own database — separate from app DB) ──
   demo-db:
     image: postgres:16-alpine
-    container_name: bharatbi-demo-db
+    container_name: cuebi-demo-db
     environment:
       POSTGRES_USER: demo
       POSTGRES_PASSWORD: demo_dev
@@ -38,7 +38,7 @@ services:
       - "5433:5432"
     volumes:
       - demodata:/var/lib/postgresql/data
-      - ./examples/sample_indian_ecommerce.sql:/docker-entrypoint-initdb.d/01-demo.sql
+      - ./examples/sample_data.sql:/docker-entrypoint-initdb.d/01-demo.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U demo -d demo_store"]
       interval: 5s
@@ -48,7 +48,7 @@ services:
   # ── Qdrant (vector DB) ──
   qdrant:
     image: qdrant/qdrant:v1.9.7
-    container_name: bharatbi-qdrant
+    container_name: cuebi-qdrant
     ports:
       - "6333:6333"
     volumes:
@@ -57,7 +57,7 @@ services:
   # ── Redis (Celery broker) ──
   redis:
     image: redis:7-alpine
-    container_name: bharatbi-redis
+    container_name: cuebi-redis
     ports:
       - "6379:6379"
     healthcheck:
@@ -71,14 +71,14 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile.dev
-    container_name: bharatbi-api
+    container_name: cuebi-api
     ports:
       - "8000:8000"
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://bharatbi:bharatbi_dev@postgres:5432/bharatbi
-      SYNC_DATABASE_URL: postgresql://bharatbi:bharatbi_dev@postgres:5432/bharatbi
+      DATABASE_URL: postgresql+asyncpg://cuebi:cuebi_dev@postgres:5432/cuebi
+      SYNC_DATABASE_URL: postgresql://cuebi:cuebi_dev@postgres:5432/cuebi
       QDRANT_URL: http://qdrant:6333
       REDIS_URL: redis://redis:6379/0
     volumes:
@@ -97,13 +97,13 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile.dev
-    container_name: bharatbi-worker
+    container_name: cuebi-worker
     command: celery -A apps.api.tasks worker --loglevel=info
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://bharatbi:bharatbi_dev@postgres:5432/bharatbi
-      SYNC_DATABASE_URL: postgresql://bharatbi:bharatbi_dev@postgres:5432/bharatbi
+      DATABASE_URL: postgresql+asyncpg://cuebi:cuebi_dev@postgres:5432/cuebi
+      SYNC_DATABASE_URL: postgresql://cuebi:cuebi_dev@postgres:5432/cuebi
       QDRANT_URL: http://qdrant:6333
       REDIS_URL: redis://redis:6379/0
     volumes:
@@ -122,7 +122,7 @@ services:
     build:
       context: ./apps/web
       dockerfile: Dockerfile.dev
-    container_name: bharatbi-web
+    container_name: cuebi-web
     ports:
       - "3000:3000"
     environment:

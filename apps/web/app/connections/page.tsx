@@ -1,16 +1,21 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Database, Plus, RefreshCw, CheckCircle, XCircle, Loader2, Upload, FileSpreadsheet, X, Wifi } from "lucide-react";
+import { Database, Plus, RefreshCw, CheckCircle, XCircle, Loader2, X, Wifi, Cloud } from "lucide-react";
 import toast from "react-hot-toast";
 import Sidebar from "@/components/Sidebar";
-import { listConnections, createConnection, testConnection, syncConnection, uploadTally, uploadCSV, type Connection } from "@/lib/api";
+import { listConnections, createConnection, testConnection, syncConnection, type Connection } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 
-type Tab = "sql" | "tally" | "csv";
+const CONNECTOR_TYPES = [
+  { value: "postgresql",     label: "PostgreSQL",           defaultPort: 5432, icon: "🐘", group: "Direct" },
+  { value: "mysql",          label: "MySQL",                defaultPort: 3306, icon: "🐬", group: "Direct" },
+  { value: "redshift",       label: "Amazon Redshift",      defaultPort: 5439, icon: "🔴", group: "AWS" },
+  { value: "rds_postgresql", label: "AWS RDS (PostgreSQL)", defaultPort: 5432, icon: "🟠", group: "AWS" },
+  { value: "rds_mysql",      label: "AWS RDS (MySQL)",      defaultPort: 3306, icon: "🟠", group: "AWS" },
+];
 
 export default function ConnectionsPage() {
   const [connections, setConnections] = useState<Connection[]>([]);
-  const [tab, setTab] = useState<Tab>("sql");
   const [showForm, setShowForm] = useState(false);
   const { setActiveConnection, sidebarOpen } = useAppStore();
   const ml = sidebarOpen ? "ml-[200px]" : "ml-14";
@@ -26,7 +31,7 @@ export default function ConnectionsPage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-[18px] font-semibold" style={{ color: "var(--fg-0)" }}>Data Sources</h1>
-              <p className="text-[13px] mt-0.5" style={{ color: "var(--fg-3)" }}>Connect databases, Tally exports, or CSV files</p>
+              <p className="text-[13px] mt-0.5" style={{ color: "var(--fg-3)" }}>Connect PostgreSQL, MySQL, or AWS databases</p>
             </div>
             <button onClick={() => setShowForm(!showForm)} className="btn btn-primary text-[13px]">
               {showForm ? <X size={14} /> : <Plus size={14} />}
@@ -37,18 +42,7 @@ export default function ConnectionsPage() {
           {/* Add Form */}
           {showForm && (
             <div className="card p-5 mb-6 fade-in">
-              <div className="flex gap-1 p-1 rounded-lg mb-5" style={{ background: "var(--bg-0)" }}>
-                {(["sql", "tally", "csv"] as Tab[]).map((t) => (
-                  <button key={t} onClick={() => setTab(t)}
-                    className="flex-1 text-[12px] font-medium py-2 rounded-md transition-all"
-                    style={{ background: tab === t ? "var(--accent)" : "transparent", color: tab === t ? "#fff" : "var(--fg-2)" }}>
-                    {t === "sql" ? "PostgreSQL / MySQL" : t === "tally" ? "Tally Import" : "CSV / Sheets"}
-                  </button>
-                ))}
-              </div>
-              {tab === "sql" && <SQLForm onDone={() => { setShowForm(false); refresh(); }} />}
-              {tab === "tally" && <FileUploadForm type="tally" onDone={() => { setShowForm(false); refresh(); }} />}
-              {tab === "csv" && <FileUploadForm type="csv" onDone={() => { setShowForm(false); refresh(); }} />}
+              <SQLForm onDone={() => { setShowForm(false); refresh(); }} />
             </div>
           )}
 
@@ -61,7 +55,7 @@ export default function ConnectionsPage() {
               <div className="card empty-state">
                 <div className="empty-state-icon"><Database size={20} /></div>
                 <h3>No data sources</h3>
-                <p>Connect a database, upload Tally data, or import a CSV to start asking questions.</p>
+                <p>Connect a PostgreSQL, MySQL, or AWS database to start asking questions.</p>
               </div>
             )}
           </div>
@@ -80,17 +74,18 @@ function ConnCard({ conn, onSync, onSelect }: { conn: Connection; onSync: () => 
     setSyncing(false);
   };
   const statusColor = conn.status === "ready" ? "var(--success)" : conn.status === "error" ? "var(--danger)" : "var(--warning)";
+  const connectorMeta = CONNECTOR_TYPES.find((t) => t.value === conn.conn_type);
 
   return (
     <div className="card card-interactive flex items-center justify-between p-4">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "var(--bg-3)" }}>
-          <Database size={15} style={{ color: "var(--fg-3)" }} />
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center text-[18px]" style={{ background: "var(--bg-3)" }}>
+          {connectorMeta?.group === "AWS" ? <Cloud size={15} style={{ color: "var(--fg-3)" }} /> : <Database size={15} style={{ color: "var(--fg-3)" }} />}
         </div>
         <div>
           <div className="text-[13px] font-medium" style={{ color: "var(--fg-0)" }}>{conn.name}</div>
           <div className="text-[11px] flex items-center gap-1.5 mt-0.5" style={{ color: "var(--fg-3)" }}>
-            {conn.conn_type}
+            {connectorMeta?.label ?? conn.conn_type}
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: statusColor }} />
             {conn.status}
           </div>
@@ -109,10 +104,24 @@ function ConnCard({ conn, onSync, onSelect }: { conn: Connection; onSync: () => 
 }
 
 function SQLForm({ onDone }: { onDone: () => void }) {
-  const [form, setForm] = useState({ name: "", conn_type: "postgresql", host: "", port: "5432", database_name: "", username: "", password: "" });
+  const [form, setForm] = useState({
+    name: "",
+    conn_type: "postgresql",
+    host: "",
+    port: "5432",
+    database_name: "",
+    username: "",
+    password: "",
+  });
   const [testing, setTesting] = useState(false);
   const [testOk, setTestOk] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const handleTypeChange = (conn_type: string) => {
+    const meta = CONNECTOR_TYPES.find((t) => t.value === conn_type);
+    setForm((f) => ({ ...f, conn_type, port: String(meta?.defaultPort ?? 5432) }));
+    setTestOk(null);
+  };
 
   const handleTest = async () => {
     setTesting(true); setTestOk(null);
@@ -124,6 +133,7 @@ function SQLForm({ onDone }: { onDone: () => void }) {
     } catch { setTestOk(false); toast.error("Connection failed"); }
     setTesting(false);
   };
+
   const handleSave = async () => {
     setSaving(true);
     try { await createConnection({ ...form, port: parseInt(form.port) }); toast.success("Saved!"); onDone(); }
@@ -139,25 +149,49 @@ function SQLForm({ onDone }: { onDone: () => void }) {
     </div>
   );
 
+  const selectedMeta = CONNECTOR_TYPES.find((t) => t.value === form.conn_type);
+  const isAWS = selectedMeta?.group === "AWS";
+
+  // Group connectors for the select
+  const directTypes = CONNECTOR_TYPES.filter((t) => t.group === "Direct");
+  const awsTypes = CONNECTOR_TYPES.filter((t) => t.group === "AWS");
+
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <Field label="Name" field="name" placeholder="My Database" />
         <div>
           <label className="block text-[11px] font-medium mb-1" style={{ color: "var(--fg-3)" }}>Type</label>
-          <select value={form.conn_type} onChange={(e) => setForm({ ...form, conn_type: e.target.value })} className="select w-full">
-            <option value="postgresql" style={{ background: "var(--bg-2)" }}>PostgreSQL</option>
-            <option value="mysql" style={{ background: "var(--bg-2)" }}>MySQL</option>
+          <select value={form.conn_type} onChange={(e) => handleTypeChange(e.target.value)} className="select w-full">
+            <optgroup label="Direct">
+              {directTypes.map((t) => (
+                <option key={t.value} value={t.value} style={{ background: "var(--bg-2)" }}>{t.label}</option>
+              ))}
+            </optgroup>
+            <optgroup label="AWS">
+              {awsTypes.map((t) => (
+                <option key={t.value} value={t.value} style={{ background: "var(--bg-2)" }}>{t.label}</option>
+              ))}
+            </optgroup>
           </select>
         </div>
       </div>
+
+      {isAWS && (
+        <div className="rounded-lg px-3 py-2 text-[11px]" style={{ background: "var(--accent-muted)", color: "var(--accent)" }}>
+          {form.conn_type === "redshift"
+            ? "Redshift endpoint format: cluster.id.region.redshift.amazonaws.com"
+            : "RDS endpoint format: instance.id.region.rds.amazonaws.com"}
+        </div>
+      )}
+
       <div className="grid grid-cols-4 gap-3">
-        <div className="col-span-3"><Field label="Host" field="host" placeholder="localhost" /></div>
-        <Field label="Port" field="port" placeholder="5432" />
+        <div className="col-span-3"><Field label="Host" field="host" placeholder={isAWS ? "cluster.abc123.us-east-1.redshift.amazonaws.com" : "localhost"} /></div>
+        <Field label="Port" field="port" placeholder={selectedMeta?.defaultPort?.toString()} />
       </div>
-      <Field label="Database" field="database_name" placeholder="my_database" />
+      <Field label="Database" field="database_name" placeholder={form.conn_type === "redshift" ? "dev" : "my_database"} />
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Username" field="username" placeholder="postgres" />
+        <Field label="Username" field="username" placeholder={form.conn_type === "redshift" ? "awsuser" : "postgres"} />
         <Field label="Password" field="password" type="password" />
       </div>
       <div className="flex items-center gap-2 pt-2">
@@ -169,54 +203,6 @@ function SQLForm({ onDone }: { onDone: () => void }) {
           {saving && <Loader2 size={12} className="animate-spin" />} Save & Sync
         </button>
       </div>
-    </div>
-  );
-}
-
-function FileUploadForm({ type, onDone }: { type: "tally" | "csv"; onDone: () => void }) {
-  const [file, setFile] = useState<File | null>(null);
-  const [name, setName] = useState("");
-  const [uploading, setUploading] = useState(false);
-
-  const handleUpload = async () => {
-    if (!file) return;
-    setUploading(true);
-    try {
-      if (type === "tally") await uploadTally(file, name || file.name);
-      else await uploadCSV(file, name || file.name);
-      toast.success(`${type === "tally" ? "Tally" : "CSV"} data imported!`);
-      onDone();
-    } catch (err: any) { toast.error(err?.response?.data?.detail || "Upload failed"); }
-    setUploading(false);
-  };
-
-  const accept = type === "tally" ? ".xml,.xlsx,.xls" : ".csv";
-  const hint = type === "tally"
-    ? "Export from TallyPrime: Alt+E → XML or Excel → upload here"
-    : "Export from Google Sheets: File → Download → CSV → upload here";
-
-  return (
-    <div className="space-y-3">
-      <p className="text-[12px] leading-relaxed" style={{ color: "var(--fg-3)" }}>{hint}</p>
-      <div>
-        <label className="block text-[11px] font-medium mb-1" style={{ color: "var(--fg-3)" }}>Name</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder={type === "tally" ? "My Company Tally" : "Sales Data"} className="input text-[13px]" />
-      </div>
-      <div onClick={() => document.getElementById(`${type}-file`)?.click()}
-        className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all"
-        style={{ borderColor: file ? "var(--accent)" : "var(--border)", background: file ? "var(--accent-muted)" : "transparent" }}
-        onMouseEnter={(e) => { if (!file) e.currentTarget.style.borderColor = "var(--border-hover)"; }}
-        onMouseLeave={(e) => { if (!file) e.currentTarget.style.borderColor = "var(--border)"; }}>
-        {type === "tally" ? <Upload size={20} className="mx-auto mb-2" style={{ color: "var(--fg-3)" }} /> : <FileSpreadsheet size={20} className="mx-auto mb-2" style={{ color: "var(--fg-3)" }} />}
-        <p className="text-[12px]" style={{ color: file ? "var(--fg-0)" : "var(--fg-3)" }}>
-          {file ? file.name : `Drop or click to upload ${accept}`}
-        </p>
-        <input id={`${type}-file`} type="file" accept={accept} className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-      </div>
-      <button onClick={handleUpload} disabled={!file || uploading} className="btn btn-primary text-[12px] w-full">
-        {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
-        {uploading ? "Importing..." : `Import ${type === "tally" ? "Tally" : "CSV"} Data`}
-      </button>
     </div>
   );
 }

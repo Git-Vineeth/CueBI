@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""BharatBI API — main FastAPI application."""
+"""CueBI API — main FastAPI application."""
 import os
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
@@ -10,21 +10,21 @@ load_dotenv()
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from apps.api.api.routes import health, connections, query, schema, tally, sheets, dashboard
+from apps.api.api.routes import health, connections, query, schema, dashboard
 from apps.api.api.routes import reports, explain, teams
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup / shutdown events."""
-    print("🇮🇳 BharatBI API starting...")
+    print("CueBI API starting...")
     yield
-    print("BharatBI API shutting down.")
+    print("CueBI API shutting down.")
 
 
 app = FastAPI(
-    title="BharatBI API",
-    description="India's First Open-Source GenBI System",
+    title="CueBI API",
+    description="Cuemath's AI-powered Business Intelligence Platform",
     version="0.2.0",
     lifespan=lifespan,
 )
@@ -47,8 +47,6 @@ app.include_router(health.router, tags=["Health"])
 app.include_router(connections.router, prefix="/api/connections", tags=["Connections"])
 app.include_router(query.router, prefix="/api", tags=["Query"])
 app.include_router(schema.router, prefix="/api/schema", tags=["Schema"])
-app.include_router(tally.router, prefix="/api/tally", tags=["Tally"])
-app.include_router(sheets.router, prefix="/api/sheets", tags=["Google Sheets"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(reports.router, prefix="/api/reports", tags=["Scheduled Reports & Alerts"])
 app.include_router(explain.router, prefix="/api", tags=["SQL Explain"])

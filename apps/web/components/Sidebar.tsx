@@ -64,7 +64,7 @@ export default function Sidebar() {
         </div>
         {sidebarOpen && (
           <span className="font-semibold text-[14px] tracking-[-0.01em]" style={{ color: "var(--fg-0)" }}>
-            BharatBI
+            CueBI
           </span>
         )}
       </div>
@@ -91,7 +91,7 @@ export default function Sidebar() {
           {sidebarOpen && (theme === "dark" ? "Light mode" : "Dark mode")}
         </button>
         {sidebarOpen && (
-          <div className="text-[10px] px-3 mt-2" style={{ color: "var(--fg-4)" }}>v0.2 · India 🇮🇳</div>
+          <div className="text-[10px] px-3 mt-2" style={{ color: "var(--fg-4)" }}>v0.2 · Cuemath</div>
         )}
       </div>
     </aside>

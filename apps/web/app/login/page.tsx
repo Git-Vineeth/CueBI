@@ -27,7 +27,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm px-6">
         <div className="text-center mb-8">
           <h1 className="font-display text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
-            Bharat<span className="text-saffron-500">BI</span>
+            Cue<span style={{ color: "var(--accent)" }}>BI</span>
           </h1>
           <p className="text-sm mt-2" style={{ color: "var(--text-muted)" }}>
             Sign in to your account
@@ -83,14 +83,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center text-xs mt-6" style={{ color: "var(--text-muted)" }}>
-          <a
-            href="https://github.com/anthropics/bharatbi"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:underline"
-          >
-            BharatBI is open source
-          </a>
+          © 2026 Cuemath. Internal use only.
         </p>
       </div>
     </div>

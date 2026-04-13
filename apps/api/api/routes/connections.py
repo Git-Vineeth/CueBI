@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-"""
-BharatBI — Connections API
+"""CueBI — Connections API
 Handles create, list, test, and sync of data source connections.
 """
 

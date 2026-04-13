@@ -1,11 +1,14 @@
 from __future__ import annotations
 """
-CueBI — PostgreSQL Connector
-Connects to a user's PostgreSQL database, extracts schema,
-and executes generated SQL queries.
+CueBI — Amazon Redshift Connector
+Connects to an Amazon Redshift cluster or Redshift Serverless endpoint.
 
-Raw data NEVER leaves the user's database.
-Only schema metadata is sent to the LLM.
+Redshift uses the PostgreSQL wire protocol (asyncpg compatible).
+Key differences from standard PostgreSQL:
+- Default port: 5439
+- SSL required by default
+- Schema introspection uses pg_catalog (not information_schema)
+- SVV_TABLE_INFO for row counts (faster than pg_class for large clusters)
 """
 
 import asyncpg
@@ -13,20 +16,23 @@ from typing import Any, Optional
 from .base import BaseConnector, SchemaInfo, TableInfo, ColumnInfo
 
 
-class PostgreSQLConnector(BaseConnector):
+class RedshiftConnector(BaseConnector):
     """
-    Full PostgreSQL connector using asyncpg.
-    Extracts schema from information_schema + pg_catalog.
+    Amazon Redshift connector using asyncpg (PostgreSQL wire protocol).
+    Works with both provisioned clusters and Redshift Serverless.
+
+    Connection string format:
+      redshift-cluster.abc123.us-east-1.redshift.amazonaws.com:5439/dev
     """
 
     def __init__(
         self,
         host: str,
-        port: int,
-        database: str,
-        username: str,
-        password: str,
-        ssl: bool = False,
+        port: int = 5439,
+        database: str = "dev",
+        username: str = "",
+        password: str = "",
+        ssl: bool = True,
     ):
         self.host = host
         self.port = port
@@ -38,20 +44,22 @@ class PostgreSQLConnector(BaseConnector):
 
     @property
     def connector_type(self) -> str:
-        return "postgresql"
+        return "redshift"
 
     async def _get_pool(self) -> asyncpg.Pool:
         if self._pool is None:
+            ssl_param = "require" if self.ssl else None
             self._pool = await asyncpg.create_pool(
                 host=self.host,
                 port=self.port,
                 database=self.database,
                 user=self.username,
                 password=self.password,
-                ssl=self.ssl,
+                ssl=ssl_param,
                 min_size=1,
                 max_size=5,
-                command_timeout=30,
+                command_timeout=60,
+                server_settings={"search_path": "public"},
             )
         return self._pool
 
@@ -62,7 +70,7 @@ class PostgreSQLConnector(BaseConnector):
             pool = await self._get_pool()
             async with pool.acquire() as conn:
                 version = await conn.fetchval("SELECT version()")
-            return True, f"Connected ✓  PostgreSQL {version.split(',')[0]}"
+            return True, f"Connected ✓  Redshift {version.split(',')[0] if version else ''}"
         except Exception as e:
             return False, str(e)
 
@@ -70,9 +78,8 @@ class PostgreSQLConnector(BaseConnector):
 
     async def extract_schema(self) -> SchemaInfo:
         """
-        Extracts full schema using information_schema.
-        Gets tables → columns → types → PKs → FKs → sample values.
-        Skips system schemas (pg_catalog, information_schema).
+        Extracts schema from Redshift's information_schema.
+        Uses SVV_TABLE_INFO for accurate row counts.
         """
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -84,7 +91,7 @@ class PostgreSQLConnector(BaseConnector):
 
         return SchemaInfo(
             tables=tables,
-            dialect="postgresql",
+            dialect="postgresql",  # Redshift is SQL-compatible with PostgreSQL
             database_name=self.database,
         )
 
@@ -99,82 +106,54 @@ class PostgreSQLConnector(BaseConnector):
         return [TableInfo(name=row["table_name"]) for row in rows]
 
     async def _get_columns(self, conn: asyncpg.Connection, table_name: str) -> list[ColumnInfo]:
-        # Get columns with types and nullability
         col_rows = await conn.fetch("""
             SELECT
-                c.column_name,
-                c.data_type,
-                c.is_nullable,
-                c.character_maximum_length,
-                c.numeric_precision
-            FROM information_schema.columns c
-            WHERE c.table_schema = 'public'
-              AND c.table_name   = $1
-            ORDER BY c.ordinal_position
+                column_name,
+                data_type,
+                is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name   = $1
+            ORDER BY ordinal_position
         """, table_name)
 
-        # Get primary key columns
+        # Redshift PKs via pg_constraint
         pk_rows = await conn.fetch("""
             SELECT kcu.column_name
             FROM information_schema.table_constraints tc
             JOIN information_schema.key_column_usage kcu
               ON tc.constraint_name = kcu.constraint_name
-             AND tc.table_schema    = kcu.table_schema
             WHERE tc.constraint_type = 'PRIMARY KEY'
               AND tc.table_name      = $1
               AND tc.table_schema    = 'public'
         """, table_name)
         pk_cols = {r["column_name"] for r in pk_rows}
 
-        # Get foreign key columns
-        fk_rows = await conn.fetch("""
-            SELECT
-                kcu.column_name,
-                ccu.table_name  AS ref_table,
-                ccu.column_name AS ref_column
-            FROM information_schema.table_constraints AS tc
-            JOIN information_schema.key_column_usage AS kcu
-              ON tc.constraint_name = kcu.constraint_name
-             AND tc.table_schema    = kcu.table_schema
-            JOIN information_schema.constraint_column_usage AS ccu
-              ON ccu.constraint_name = tc.constraint_name
-             AND ccu.table_schema    = tc.table_schema
-            WHERE tc.constraint_type = 'FOREIGN KEY'
-              AND tc.table_name      = $1
-              AND tc.table_schema    = 'public'
-        """, table_name)
-        fk_map = {r["column_name"]: (r["ref_table"], r["ref_column"]) for r in fk_rows}
-
         columns = []
         for row in col_rows:
             col_name = row["column_name"]
-            fk_info = fk_map.get(col_name)
             columns.append(ColumnInfo(
                 name=col_name,
                 data_type=row["data_type"],
                 is_nullable=(row["is_nullable"] == "YES"),
                 is_primary_key=(col_name in pk_cols),
-                is_foreign_key=(fk_info is not None),
-                references_table=fk_info[0] if fk_info else None,
-                references_column=fk_info[1] if fk_info else None,
             ))
         return columns
 
     async def _get_row_count(self, conn: asyncpg.Connection, table_name: str) -> int:
-        """Fast approximate row count using pg_stat_user_tables."""
-        row = await conn.fetchrow("""
-            SELECT reltuples::BIGINT AS approx_count
-            FROM pg_class
-            WHERE relname = $1
-        """, table_name)
-        return int(row["approx_count"]) if row else 0
+        """Use SVV_TABLE_INFO for accurate Redshift row counts."""
+        try:
+            row = await conn.fetchrow("""
+                SELECT tbl_rows
+                FROM svv_table_info
+                WHERE "table" = $1
+                  AND "schema" = 'public'
+            """, table_name)
+            return int(row["tbl_rows"]) if row and row["tbl_rows"] else 0
+        except Exception:
+            return 0
 
     async def _add_sample_values(self, conn: asyncpg.Connection, table: TableInfo) -> None:
-        """
-        Fetch up to 3 sample values for each column.
-        Skips columns that look like passwords or tokens.
-        This gives the LLM real context about what's in the data.
-        """
         sensitive_keywords = {"password", "secret", "token", "key", "hash", "salt", "otp"}
         for col in table.columns:
             if any(kw in col.name.lower() for kw in sensitive_keywords):
@@ -182,7 +161,7 @@ class PostgreSQLConnector(BaseConnector):
                 continue
             try:
                 rows = await conn.fetch(f"""
-                    SELECT DISTINCT "{col.name}"::TEXT AS val
+                    SELECT DISTINCT "{col.name}"::VARCHAR AS val
                     FROM "{table.name}"
                     WHERE "{col.name}" IS NOT NULL
                     LIMIT 3
@@ -194,11 +173,6 @@ class PostgreSQLConnector(BaseConnector):
     # ── Query execution ───────────────────────────────────────
 
     async def execute_query(self, sql: str, limit: int = 1000) -> tuple[list[str], list[list[Any]]]:
-        """
-        Executes a SQL query and returns (columns, rows).
-        Automatically adds LIMIT if not present (safety guard).
-        """
-        # Safety: ensure there's a limit
         sql_upper = sql.upper().strip()
         if sql_upper.startswith("SELECT") and "LIMIT" not in sql_upper:
             sql = sql.rstrip(";") + f" LIMIT {limit}"
@@ -211,19 +185,6 @@ class PostgreSQLConnector(BaseConnector):
             columns = list(rows[0].keys())
             data = [list(row.values()) for row in rows]
             return columns, data
-
-    async def validate_sql(self, sql: str) -> tuple[bool, str]:
-        """
-        Validates SQL without executing it using EXPLAIN.
-        Returns (is_valid: bool, error_message: str).
-        """
-        pool = await self._get_pool()
-        async with pool.acquire() as conn:
-            try:
-                await conn.execute(f"EXPLAIN {sql}")
-                return True, ""
-            except asyncpg.PostgresError as e:
-                return False, str(e)
 
     async def close(self) -> None:
         if self._pool:

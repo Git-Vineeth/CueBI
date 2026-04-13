@@ -17,13 +17,13 @@ class ExplainRequest(BaseModel):
 @router.post("/explain-sql")
 async def explain_sql(req: ExplainRequest):
     """
-    Takes a SQL query and returns a plain English, step-by-step explanation.
-    Designed for Indian business users who don't know SQL.
+    Takes a SQL query and returns a plain English, step-by-step explanation
+    for non-technical users.
     """
     llm = get_llm_provider(req.llm_provider)
 
     prompt = (
-        "You are explaining a SQL query to an Indian business owner who has ZERO SQL knowledge.\n\n"
+        "You are explaining a SQL query to a business user who has ZERO SQL knowledge.\n\n"
         "SQL Query:\n"
         f"```sql\n{req.sql}\n```\n\n"
         "Explain this query in simple English:\n"
@@ -31,7 +31,6 @@ async def explain_sql(req: ExplainRequest):
         "2. What filters or conditions are applied?\n"
         "3. How is the data grouped or sorted?\n"
         "4. What is the final result? (what will the user see)\n\n"
-        "Use Indian business terms where relevant (lakh, crore, FY, GST, party, ledger).\n"
         "Keep it under 100 words. Use bullet points. No technical jargon."
     )
 

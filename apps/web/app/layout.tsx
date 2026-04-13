@@ -2,7 +2,7 @@ import "./globals.css";
 import { Toaster } from "react-hot-toast";
 
 export const metadata = {
-  title: "BharatBI — India's GenBI",
+  title: "CueBI — Cuemath's BI Platform",
   description: "Ask questions about your business data in plain English",
   icons: { icon: "/favicon.ico" },
 };

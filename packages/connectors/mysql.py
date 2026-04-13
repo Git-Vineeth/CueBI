@@ -1,6 +1,6 @@
 from __future__ import annotations
 """
-BharatBI — MySQL Connector
+CueBI — MySQL Connector
 Connects to a user's MySQL/MariaDB database.
 Uses aiomysql for async queries.
 """

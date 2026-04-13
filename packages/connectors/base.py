@@ -1,6 +1,6 @@
 from __future__ import annotations
 """
-BharatBI — Base Connector
+CueBI — Base Connector
 Every data source connector implements this interface.
 
 To add a new connector (e.g. Shopify, Razorpay):
@@ -44,7 +44,7 @@ class SchemaInfo:
 
 
 class BaseConnector(ABC):
-    """Abstract base for all BharatBI data source connectors."""
+    """Abstract base for all CueBI data source connectors."""
 
     @property
     @abstractmethod
