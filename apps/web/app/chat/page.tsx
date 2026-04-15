@@ -2,8 +2,9 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Loader2, ChevronDown, ChevronUp, Copy, Check, Download, Sparkles, Pin, FileQuestion, BarChart3 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useSession } from "next-auth/react";
 import Sidebar from "@/components/Sidebar";
-import { runQuery, listConnections, pinQuery, explainSQL, type QueryResponse, type Connection } from "@/lib/api";
+import { runQuery, listConnections, pinQuery, explainSQL, getMyExamples, type QueryResponse, type Connection } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import dynamic from "next/dynamic";
 
@@ -25,7 +26,10 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [connections, setConnections] = useState<Connection[]>([]);
+  const [teamExamples, setTeamExamples] = useState<string[]>([]);
   const { activeConnectionId, setActiveConnection, llmProvider, sidebarOpen } = useAppStore();
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as any)?.cuebi_role === "admin";
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -35,6 +39,9 @@ export default function ChatPage() {
       setConnections(ready);
       if (ready.length > 0 && !activeConnectionId) setActiveConnection(ready[0].id);
     }).catch(() => {});
+
+    // Load team-specific example questions
+    getMyExamples().then((r) => setTeamExamples(r.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -76,28 +83,32 @@ export default function ChatPage() {
             <h1 className="text-[13px] font-semibold" style={{ color: "var(--fg-0)" }}>Chat</h1>
           </div>
           <div className="flex items-center gap-2.5">
-            {/* LLM Toggle */}
-            <div className="flex items-center p-[3px] rounded-md" style={{ background: "var(--bg-0)" }}>
-              {(["openai", "anthropic"] as const).map((p) => (
-                <button key={p} onClick={() => useAppStore.getState().setLLMProvider(p)}
-                  className="text-[11px] font-medium px-2.5 py-[3px] rounded transition-all"
-                  style={{ background: llmProvider === p ? "var(--accent)" : "transparent", color: llmProvider === p ? "#fff" : "var(--fg-3)" }}>
-                  {p === "openai" ? "GPT-4o" : "Claude"}
-                </button>
-              ))}
-            </div>
-            {/* Connection selector */}
-            <select value={activeConnectionId || ""} onChange={(e) => setActiveConnection(e.target.value)} className="select text-[11px] py-1">
-              {connections.length === 0 && <option value="">No sources</option>}
-              {connections.map((c) => <option key={c.id} value={c.id} style={{ background: "var(--bg-2)" }}>{c.name}</option>)}
-            </select>
+            {/* LLM Toggle — admin only */}
+            {isAdmin && (
+              <div className="flex items-center p-[3px] rounded-md" style={{ background: "var(--bg-0)" }}>
+                {(["openai", "anthropic"] as const).map((p) => (
+                  <button key={p} onClick={() => useAppStore.getState().setLLMProvider(p)}
+                    className="text-[11px] font-medium px-2.5 py-[3px] rounded transition-all"
+                    style={{ background: llmProvider === p ? "var(--accent)" : "transparent", color: llmProvider === p ? "#fff" : "var(--fg-3)" }}>
+                    {p === "openai" ? "GPT-4o" : "Claude"}
+                  </button>
+                ))}
+              </div>
+            )}
+            {/* Connection selector — admin only (non-admins auto-use the first ready connection) */}
+            {isAdmin && (
+              <select value={activeConnectionId || ""} onChange={(e) => setActiveConnection(e.target.value)} className="select text-[11px] py-1">
+                {connections.length === 0 && <option value="">No sources</option>}
+                {connections.map((c) => <option key={c.id} value={c.id} style={{ background: "var(--bg-2)" }}>{c.name}</option>)}
+              </select>
+            )}
           </div>
         </header>
 
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto">
           <div className="max-w-[720px] mx-auto px-5 py-6 space-y-5">
-            {messages.length === 0 && <EmptyState onSuggestion={useSuggestion} />}
+            {messages.length === 0 && <EmptyState onSuggestion={useSuggestion} examples={teamExamples} />}
             {messages.map((m) => m.type === "user"
               ? <UserBubble key={m.id} text={m.question || ""} />
               : <AIResponse key={m.id} msg={m} onSuggestion={useSuggestion} />
@@ -130,15 +141,17 @@ export default function ChatPage() {
 
 /* ── Sub-components ── */
 
-function EmptyState({ onSuggestion }: { onSuggestion: (q: string) => void }) {
-  const suggestions = [
-    "Top 5 customers by revenue",
-    "Monthly revenue trend this FY",
-    "Which payment mode is most popular?",
-    "Total GST collected this year",
-    "City-wise order distribution",
-    "Average order value by customer type",
-  ];
+const DEFAULT_SUGGESTIONS = [
+  "Top 5 students by revenue",
+  "Monthly enrollments this year",
+  "Which grade has the highest conversion?",
+  "Revenue by country this quarter",
+  "Average LTV by subscription plan",
+  "Weekly active students trend",
+];
+
+function EmptyState({ onSuggestion, examples }: { onSuggestion: (q: string) => void; examples: string[] }) {
+  const suggestions = examples.length > 0 ? examples : DEFAULT_SUGGESTIONS;
   return (
     <div className="flex flex-col items-center justify-center pt-16 pb-8 fade-in">
       <div className="empty-state-icon w-12 h-12 mb-4">

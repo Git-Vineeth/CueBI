@@ -125,8 +125,17 @@ services:
     container_name: cuebi-web
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
+      # NextAuth requires these — set real values in .env for Google SSO.
+      # For local dev without Google OAuth configured, auth is bypassed on the API side.
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-cuebi-nextauth-dev-secret}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      CUEBI_API_URL: http://api:8000
     volumes:
       - ./apps/web:/app
       - /app/node_modules

@@ -1,29 +1,23 @@
 from __future__ import annotations
 
-"""CueBI — Connections API
-Handles create, list, test, and sync of data source connections.
+"""Connections API — add, test, list, sync data source connections.
+Write operations (create, sync, delete) are admin-only.
 """
-
-
-"""Connections API — add, test, list, sync data source connections."""
 from uuid import UUID
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel
 from sqlalchemy import text
 
 from apps.api.api.db import async_session
+from apps.api.api.deps import get_current_user, require_admin
 from packages.connectors import get_connector
 
 router = APIRouter()
 
-# Default org/user for local dev
-DEV_ORG_ID = "00000000-0000-0000-0000-000000000001"
-DEV_USER_ID = "00000000-0000-0000-0000-000000000002"
-
 
 class ConnectionCreate(BaseModel):
     name: str
-    conn_type: str  # postgresql, mysql
+    conn_type: str  # postgresql, mysql, redshift, rds_postgresql, rds_mysql
     host: str
     port: int
     database_name: str
@@ -41,8 +35,8 @@ class ConnectionTestRequest(BaseModel):
 
 
 @router.post("/test")
-async def test_connection(req: ConnectionTestRequest):
-    """Test if a database connection works before saving."""
+async def test_connection(req: ConnectionTestRequest, user: dict = Depends(require_admin)):
+    """Test if a database connection works before saving. Admin only."""
     try:
         connector = get_connector(req.conn_type, {
             "host": req.host, "port": req.port,
@@ -57,8 +51,8 @@ async def test_connection(req: ConnectionTestRequest):
 
 
 @router.post("")
-async def create_connection(req: ConnectionCreate):
-    """Save a new data source connection."""
+async def create_connection(req: ConnectionCreate, user: dict = Depends(require_admin)):
+    """Save a new data source connection. Admin only."""
     async with async_session() as db:
         result = await db.execute(
             text("""
@@ -67,7 +61,7 @@ async def create_connection(req: ConnectionCreate):
                 RETURNING id, name, conn_type, status, created_at
             """),
             {
-                "org_id": DEV_ORG_ID, "name": req.name, "conn_type": req.conn_type,
+                "org_id": user["org_id"], "name": req.name, "conn_type": req.conn_type,
                 "host": req.host, "port": req.port, "database_name": req.database_name,
                 "username": req.username, "password": req.password,
             },
@@ -78,23 +72,31 @@ async def create_connection(req: ConnectionCreate):
 
 
 @router.get("")
-async def list_connections():
-    """List all connections for the dev org."""
+async def list_connections(request: Request):
+    """List all connections for the caller's org (all authenticated users)."""
+    user = await get_current_user(request)
     async with async_session() as db:
         result = await db.execute(
-            text("SELECT id, name, conn_type, host, port, database_name, status, last_synced_at, created_at FROM connections WHERE org_id = :org_id ORDER BY created_at DESC"),
-            {"org_id": DEV_ORG_ID},
+            text("""
+                SELECT id, name, conn_type, host, port, database_name, status, last_synced_at, created_at
+                FROM connections WHERE org_id = :org_id ORDER BY created_at DESC
+            """),
+            {"org_id": user["org_id"]},
         )
         rows = result.mappings().all()
         return [dict(r) for r in rows]
 
 
 @router.get("/{connection_id}")
-async def get_connection(connection_id: UUID):
+async def get_connection(connection_id: UUID, request: Request):
+    user = await get_current_user(request)
     async with async_session() as db:
         result = await db.execute(
-            text("SELECT id, name, conn_type, host, port, database_name, status, last_synced_at FROM connections WHERE id = :id"),
-            {"id": str(connection_id)},
+            text("""
+                SELECT id, name, conn_type, host, port, database_name, status, last_synced_at
+                FROM connections WHERE id = :id AND org_id = :org_id
+            """),
+            {"id": str(connection_id), "org_id": user["org_id"]},
         )
         row = result.mappings().first()
         if not row:
@@ -103,27 +105,26 @@ async def get_connection(connection_id: UUID):
 
 
 @router.post("/{connection_id}/sync")
-async def sync_connection(connection_id: UUID):
-    """Trigger schema extraction + embedding pipeline for a connection."""
+async def sync_connection(connection_id: UUID, user: dict = Depends(require_admin)):
+    """Trigger schema extraction + embedding pipeline. Admin only."""
     async with async_session() as db:
-        # Verify connection exists
         result = await db.execute(
-            text("SELECT id, conn_type, host, port, database_name, username, password_enc FROM connections WHERE id = :id"),
-            {"id": str(connection_id)},
+            text("""
+                SELECT id, conn_type, host, port, database_name, username, password_enc
+                FROM connections WHERE id = :id AND org_id = :org_id
+            """),
+            {"id": str(connection_id), "org_id": user["org_id"]},
         )
         row = result.mappings().first()
         if not row:
             raise HTTPException(status_code=404, detail="Connection not found")
 
-        # Update status to syncing
         await db.execute(
             text("UPDATE connections SET status = 'syncing', updated_at = NOW() WHERE id = :id"),
             {"id": str(connection_id)},
         )
         await db.commit()
 
-    # TODO: In production, dispatch this to Celery worker
-    # For now, run inline for demo
     try:
         connector = get_connector(row["conn_type"], {
             "host": row["host"], "port": row["port"],
@@ -133,7 +134,6 @@ async def sync_connection(connection_id: UUID):
         schema_info = await connector.extract_schema()
         await connector.close()
 
-        # Chunk and embed
         from packages.core.chunker import schema_to_chunks
         from packages.core.embedder import store_chunks
 
@@ -141,9 +141,7 @@ async def sync_connection(connection_id: UUID):
         point_ids = await store_chunks(str(connection_id), chunks)
         stored_count = len(point_ids)
 
-        # Store schema metadata in DB
         async with async_session() as db:
-            # Clear old metadata
             await db.execute(
                 text("DELETE FROM schema_metadata WHERE connection_id = :cid"),
                 {"cid": str(connection_id)},
@@ -152,7 +150,8 @@ async def sync_connection(connection_id: UUID):
                 for col in table.columns:
                     await db.execute(
                         text("""
-                            INSERT INTO schema_metadata (connection_id, table_name, column_name, data_type, is_primary_key, foreign_key)
+                            INSERT INTO schema_metadata
+                                (connection_id, table_name, column_name, data_type, is_primary_key, foreign_key)
                             VALUES (:cid, :table, :col, :dtype, :pk, :fk)
                         """),
                         {
@@ -184,12 +183,12 @@ async def sync_connection(connection_id: UUID):
 
 
 @router.delete("/{connection_id}")
-async def delete_connection(connection_id: str):
-    """Delete a connection and its schema metadata."""
+async def delete_connection(connection_id: str, user: dict = Depends(require_admin)):
+    """Delete a connection and its schema metadata. Admin only."""
     async with async_session() as db:
         result = await db.execute(
             text("SELECT id FROM connections WHERE id = :id AND org_id = :org"),
-            {"id": connection_id, "org": DEV_ORG_ID},
+            {"id": connection_id, "org": user["org_id"]},
         )
         if not result.scalars().first():
             raise HTTPException(status_code=404, detail="Connection not found")

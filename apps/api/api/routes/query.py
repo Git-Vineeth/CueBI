@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-"""Query API — the main BharatBI pipeline: question → SQL → results → chart → summary."""
+"""Query API — the main CueBI pipeline: question → SQL → results → chart → summary."""
 
 import json
 import time
 import datetime
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import text
 
 from apps.api.api.db import async_session
+from apps.api.api.deps import get_current_user
 from packages.connectors import get_connector
 from packages.core.embedder import search_schema
 from packages.core.prompt_builder import build_sql_prompt
@@ -19,9 +20,6 @@ from packages.llm import get_llm_provider
 
 router = APIRouter()
 
-DEV_ORG_ID = "00000000-0000-0000-0000-000000000001"
-DEV_USER_ID = "00000000-0000-0000-0000-000000000002"
-
 
 class QueryRequest(BaseModel):
     question: str
@@ -30,15 +28,24 @@ class QueryRequest(BaseModel):
 
 
 @router.post("/query")
-async def run_query(req: QueryRequest):
-    """Full 10-step query pipeline."""
+async def run_query(req: QueryRequest, request: Request):
+    """Full 10-step query pipeline with per-team schema access filtering."""
     start_time = time.time()
 
-    # Step 1: Get connection details
+    # Auth: get caller identity
+    user = await get_current_user(request)
+    org_id = user["org_id"]
+    user_id = user["user_id"]
+    team_id = user.get("team_id")
+
+    # Step 1: Get connection details (scoped to org)
     async with async_session() as db:
         result = await db.execute(
-            text("SELECT * FROM connections WHERE id = :id AND status = 'ready'"),
-            {"id": req.connection_id},
+            text("""
+                SELECT * FROM connections
+                WHERE id = :id AND org_id = :org_id AND status = 'ready'
+            """),
+            {"id": req.connection_id, "org_id": org_id},
         )
         conn_row = result.mappings().first()
         if not conn_row:
@@ -47,11 +54,24 @@ async def run_query(req: QueryRequest):
                 detail="Connection not found or not synced. Run /api/connections/{id}/sync first.",
             )
 
+    # Step 1b: Get team's allowed tables (for schema filtering in Qdrant)
+    allowed_tables: list[str] | None = None
+    if team_id:
+        async with async_session() as db:
+            result = await db.execute(
+                text("SELECT table_name FROM team_schema_access WHERE team_id = :team_id"),
+                {"team_id": team_id},
+            )
+            rows = result.mappings().all()
+            if rows:
+                allowed_tables = [r["table_name"] for r in rows]
+
     # Step 2: Embed the user's question and search Qdrant
     schema_chunks = await search_schema(
         question=req.question,
         connection_id=req.connection_id,
         top_k=8,
+        allowed_tables=allowed_tables,
     )
 
     if not schema_chunks:
@@ -129,22 +149,30 @@ async def run_query(req: QueryRequest):
     except Exception:
         summary_text = f"Query returned {row_count} rows."
 
-    # Step 9: Save to query history
+    # Step 9: Save to query history (scoped to user + team)
     duration_ms = int((time.time() - start_time) * 1000)
     query_id = None
     try:
         async with async_session() as db:
             result = await db.execute(
                 text("""
-                    INSERT INTO queries (org_id, user_id, connection_id, question, generated_sql,
-                        result_row_count, duration_ms, llm_provider, status, chart_type, summary)
-                    VALUES (:org_id, :user_id, :cid, :question, :sql, :rows, :ms, :llm, 'success', :chart, :summary)
+                    INSERT INTO queries
+                        (org_id, user_id, team_id, connection_id, question, generated_sql,
+                         result_row_count, duration_ms, llm_provider, status, chart_type, summary)
+                    VALUES
+                        (:org_id, :user_id, :team_id, :cid, :question, :sql,
+                         :rows, :ms, :llm, 'success', :chart, :summary)
                     RETURNING id
                 """),
                 {
-                    "org_id": DEV_ORG_ID, "user_id": DEV_USER_ID,
-                    "cid": req.connection_id, "question": req.question,
-                    "sql": final_sql, "rows": row_count, "ms": duration_ms,
+                    "org_id": org_id,
+                    "user_id": user_id,
+                    "team_id": team_id,
+                    "cid": req.connection_id,
+                    "question": req.question,
+                    "sql": final_sql,
+                    "rows": row_count,
+                    "ms": duration_ms,
                     "llm": req.llm_provider,
                     "chart": chart_config.chart_type if chart_config else None,
                     "summary": summary_text,
@@ -189,17 +217,34 @@ async def run_query(req: QueryRequest):
 
 
 @router.get("/queries")
-async def list_queries(limit: int = 20):
-    """Get recent query history."""
+async def list_queries(request: Request, limit: int = 20):
+    """Get recent query history, scoped to the calling user's team."""
+    user = await get_current_user(request)
+    team_id = user.get("team_id")
+
     async with async_session() as db:
-        result = await db.execute(
-            text("""
-                SELECT id, question, generated_sql, result_row_count, duration_ms,
-                       llm_provider, status, chart_type, summary, created_at
-                FROM queries WHERE org_id = :org_id
-                ORDER BY created_at DESC LIMIT :limit
-            """),
-            {"org_id": DEV_ORG_ID, "limit": limit},
-        )
+        # Admins without a team see all queries in the org; team members see only their team
+        if team_id:
+            result = await db.execute(
+                text("""
+                    SELECT id, question, generated_sql, result_row_count, duration_ms,
+                           llm_provider, status, chart_type, summary, created_at
+                    FROM queries
+                    WHERE team_id = :team_id
+                    ORDER BY created_at DESC LIMIT :limit
+                """),
+                {"team_id": team_id, "limit": limit},
+            )
+        else:
+            result = await db.execute(
+                text("""
+                    SELECT id, question, generated_sql, result_row_count, duration_ms,
+                           llm_provider, status, chart_type, summary, created_at
+                    FROM queries
+                    WHERE org_id = :org_id
+                    ORDER BY created_at DESC LIMIT :limit
+                """),
+                {"org_id": user["org_id"], "limit": limit},
+            )
         rows = result.mappings().all()
         return [dict(r) for r in rows]

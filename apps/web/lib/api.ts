@@ -4,6 +4,15 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const api = axios.create({ baseURL: API_URL, timeout: 60000 });
 
+/** Called by SessionSync whenever the NextAuth session changes. */
+export function setAuthToken(token: string | null) {
+  if (token) {
+    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  } else {
+    delete api.defaults.headers.common["Authorization"];
+  }
+}
+
 // ── Types ──
 
 export interface Connection {
@@ -165,14 +174,39 @@ export const deleteAlert = (id: string) => api.delete(`/api/reports/alerts/${id}
 
 // ── Teams ──
 export const listMembers = () => api.get<TeamMember[]>("/api/teams/members");
-export const inviteMember = (email: string, role?: string) =>
-  api.post<TeamInvite>("/api/teams/invite", { email, role: role || "analyst" });
-export const listInvites = () => api.get<TeamInvite[]>("/api/teams/invites");
 export const updateMemberRole = (userId: string, role: string) =>
   api.patch(`/api/teams/members/${userId}/role`, { role });
 export const removeMember = (userId: string) =>
   api.delete(`/api/teams/members/${userId}`);
-export const cancelInvite = (inviteId: string) =>
-  api.delete(`/api/teams/invites/${inviteId}`);
+export const getMyExamples = () => api.get<string[]>("/api/teams/my/examples");
+
+// ── Admin ──
+export const adminListTeams = () => api.get("/api/admin/teams");
+export const adminCreateTeam = (name: string, description?: string) =>
+  api.post("/api/admin/teams", { name, description });
+export const adminDeleteTeam = (teamId: string) =>
+  api.delete(`/api/admin/teams/${teamId}`);
+export const adminListTeamMembers = (teamId: string) =>
+  api.get(`/api/admin/teams/${teamId}/members`);
+export const adminProvisionMember = (teamId: string, email: string, name?: string, role?: string) =>
+  api.post(`/api/admin/teams/${teamId}/members`, { email, name, role: role || "analyst" });
+export const adminRemoveFromTeam = (teamId: string, userId: string) =>
+  api.delete(`/api/admin/teams/${teamId}/members/${userId}`);
+export const adminListSchemas = (teamId: string) =>
+  api.get(`/api/admin/teams/${teamId}/schemas`);
+export const adminAddSchema = (teamId: string, tableName: string) =>
+  api.post(`/api/admin/teams/${teamId}/schemas`, { table_name: tableName });
+export const adminRemoveSchema = (teamId: string, accessId: string) =>
+  api.delete(`/api/admin/teams/${teamId}/schemas/${accessId}`);
+export const adminListExamples = (teamId: string) =>
+  api.get(`/api/admin/teams/${teamId}/examples`);
+export const adminAddExample = (teamId: string, question: string, sortOrder?: number) =>
+  api.post(`/api/admin/teams/${teamId}/examples`, { question, sort_order: sortOrder || 0 });
+export const adminDeleteExample = (teamId: string, exampleId: string) =>
+  api.delete(`/api/admin/teams/${teamId}/examples/${exampleId}`);
+export const adminListUsers = () => api.get("/api/admin/users");
+export const adminUsageStats = () => api.get("/api/admin/usage");
+export const adminListConnectionTables = (connectionId: string) =>
+  api.get(`/api/admin/connections/${connectionId}/tables`);
 
 export default api;

@@ -1,6 +1,6 @@
 from __future__ import annotations
 """
-BharatBI — Embedder
+CueBI — Embedder
 Converts text chunks into vectors using OpenAI text-embedding-3-small
 and stores them in Qdrant.
 
@@ -22,7 +22,7 @@ from qdrant_client.models import (
 
 EMBEDDING_MODEL = "text-embedding-3-small"
 EMBEDDING_DIMS  = 1536
-QDRANT_COLLECTION = "bharatbi_schema"
+QDRANT_COLLECTION = "cuebi_schema"
 BATCH_SIZE = 100
 
 
@@ -147,6 +147,7 @@ async def search_schema(
     question: str,
     connection_id: str,
     top_k: int = 8,
+    allowed_tables: list[str] | None = None,
 ) -> list[dict]:
     """
     Embeds the user's question and searches Qdrant for the
@@ -156,6 +157,8 @@ async def search_schema(
         question: The user's natural language question
         connection_id: Limit search to this connection's schema
         top_k: Number of chunks to retrieve
+        allowed_tables: If provided, restrict search to these table names only
+                        (used for per-team schema access control)
 
     Returns:
         List of chunk payloads (metadata + text), sorted by relevance.
@@ -163,12 +166,26 @@ async def search_schema(
     client = get_qdrant_client()
     question_vector = await embed_single(question)
 
+    # Always filter by connection_id; optionally add team table restriction
+    must_conditions: list = [
+        FieldCondition(key="connection_id", match=MatchValue(value=connection_id))
+    ]
+
+    if allowed_tables:
+        # Only search schema chunks belonging to the team's allowed tables
+        must_conditions.append(
+            Filter(
+                should=[
+                    FieldCondition(key="table", match=MatchValue(value=t))
+                    for t in allowed_tables
+                ]
+            )
+        )
+
     results = client.search(
         collection_name=QDRANT_COLLECTION,
         query_vector=question_vector,
-        query_filter=Filter(
-            must=[FieldCondition(key="connection_id", match=MatchValue(value=connection_id))]
-        ),
+        query_filter=Filter(must=must_conditions),
         limit=top_k,
         with_payload=True,
     )

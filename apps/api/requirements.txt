@@ -23,6 +23,9 @@ redis==5.0.7
 # SQL validation
 sqlglot==25.5.1
 
+# Auth
+PyJWT==2.8.0
+
 # Utilities
 python-dotenv==1.0.1
 pydantic==2.7.4
