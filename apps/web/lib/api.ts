@@ -35,7 +35,26 @@ export interface QueryResponse {
 
 export interface SchemaTable {
   table_name: string;
-  columns: { column_name: string; data_type: string; description: string; is_primary_key: boolean }[];
+  sql_name: string;           // schema-qualified: "analytics.dim_students"
+  dbt_schema: string;         // e.g. "analytics" — empty if not dbt
+  source: "introspection" | "dbt";
+  lineage: string[];          // parent model names
+  columns: {
+    column_name: string;
+    data_type: string;
+    description: string;
+    is_primary_key: boolean;
+    foreign_key?: string;
+  }[];
+}
+
+export interface DbtStatus {
+  configured: boolean;
+  dbt_type?: "manifest" | "cloud";
+  sync_status?: "pending" | "syncing" | "ready" | "error";
+  model_count?: number;
+  last_synced_at?: string;
+  sync_error?: string;
 }
 
 export interface Schedule {
@@ -95,6 +114,25 @@ export const listQueries = (limit?: number) => api.get(`/api/queries?limit=${lim
 
 // ── Schema ──
 export const getSchema = (connectionId: string) => api.get<SchemaTable[]>(`/api/schema/${connectionId}`);
+
+// ── dbt Integration ──
+export const getDbtStatus = (connectionId: string) =>
+  api.get<DbtStatus>(`/api/connections/${connectionId}/dbt/status`);
+
+export const uploadDbtManifest = (connectionId: string, file: File) => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post(`/api/connections/${connectionId}/dbt/manifest`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
+
+export const configureDbtCloud = (connectionId: string, data: {
+  account_id: string; project_id: string; environment_id?: string; api_token: string;
+}) => api.post(`/api/connections/${connectionId}/dbt/cloud`, data);
+
+export const syncDbtCloud = (connectionId: string) =>
+  api.post(`/api/connections/${connectionId}/dbt/sync`);
 
 // ── Dashboard ──
 export const pinQuery = (queryId: string, name?: string) =>

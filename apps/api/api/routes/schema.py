@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 """
-BharatBI — Schema API
+CueBI — Schema API
 Endpoints to browse and edit the semantic schema (LLM-generated descriptions).
 """
 
@@ -23,7 +23,9 @@ async def get_schema(connection_id: UUID):
     async with async_session() as db:
         result = await db.execute(
             text("""
-                SELECT table_name, column_name, data_type, description, is_primary_key, foreign_key
+                SELECT table_name, column_name, data_type, description,
+                       is_primary_key, foreign_key,
+                       dbt_model_schema, lineage, source
                 FROM schema_metadata
                 WHERE connection_id = :cid
                 ORDER BY table_name, column_name
@@ -34,16 +36,24 @@ async def get_schema(connection_id: UUID):
         if not rows:
             raise HTTPException(status_code=404, detail="No schema found. Sync the connection first.")
 
-        # Group by table
+        # Group by table — carry dbt_model_schema and lineage at table level
         tables = {}
         for r in rows:
             tn = r["table_name"]
             if tn not in tables:
-                tables[tn] = {"table_name": tn, "columns": []}
+                dbt_schema = r["dbt_model_schema"] or ""
+                tables[tn] = {
+                    "table_name": tn,
+                    "sql_name": f"{dbt_schema}.{tn}" if dbt_schema else tn,
+                    "dbt_schema": dbt_schema,
+                    "source": r["source"] or "introspection",
+                    "lineage": r["lineage"] or [],
+                    "columns": [],
+                }
             tables[tn]["columns"].append({
                 "column_name": r["column_name"],
                 "data_type": r["data_type"],
-                "description": r["description"],
+                "description": r["description"] or "",
                 "is_primary_key": r["is_primary_key"],
                 "foreign_key": r["foreign_key"],
             })

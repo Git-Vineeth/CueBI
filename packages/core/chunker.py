@@ -1,5 +1,5 @@
 """
-BharatBI — Schema Chunker
+CueBI — Schema Chunker
 Converts a SchemaInfo object into text chunks ready for embedding.
 Each chunk = one table or one column with its context.
 
@@ -41,19 +41,20 @@ def schema_to_chunks(schema: SchemaInfo) -> list[dict]:
 def _make_table_chunk(table: TableInfo, schema: SchemaInfo) -> dict:
     """
     Creates a high-level chunk for a table.
-    Example text:
-      Table: orders (PostgreSQL)
-      Approx rows: 15,420
-      Columns: order_id (uuid, PK), customer_id (uuid, FK→customers.id),
-               amount (numeric), status (text), created_at (timestamp)
-      Description: [LLM-generated, filled later]
+
+    When dbt_schema is set (e.g. "analytics"), the SQL-ready name becomes
+    "analytics.dim_students" — the LLM must use this exact form in queries.
     """
+    # Use schema-qualified name when available (dbt models on Redshift)
+    sql_name = f"{table.dbt_schema}.{table.name}" if table.dbt_schema else table.name
+
     col_summaries = []
     for col in table.columns:
         flags = []
         if col.is_primary_key:
             flags.append("PK")
         if col.is_foreign_key:
+            ref_schema = ""  # FK target schema not always known; omit for brevity
             flags.append(f"FK→{col.references_table}.{col.references_column}")
         flag_str = f" [{', '.join(flags)}]" if flags else ""
         col_summaries.append(f"{col.name} ({col.data_type}{flag_str})")
@@ -61,21 +62,26 @@ def _make_table_chunk(table: TableInfo, schema: SchemaInfo) -> dict:
     row_count_str = f"{table.row_count:,}" if table.row_count else "unknown"
 
     text = (
-        f"Table: {table.name} ({schema.dialect} database: {schema.database_name})\n"
+        f"Table: {sql_name} ({schema.dialect})\n"
         f"Approximate rows: {row_count_str}\n"
         f"Columns: {', '.join(col_summaries)}\n"
     )
     if table.description:
         text += f"Description: {table.description}\n"
+    if table.lineage:
+        text += f"Built from: {', '.join(table.lineage)}\n"
 
     return {
         "text": text.strip(),
         "metadata": {
             "chunk_type": "table",
             "table": table.name,
+            "sql_name": sql_name,          # schema-qualified for SQL generation
+            "dbt_schema": table.dbt_schema or "",
             "column": None,
             "dialect": schema.dialect,
             "database": schema.database_name,
+            "lineage": table.lineage,
         }
     }
 
@@ -104,8 +110,10 @@ def _make_column_chunk(table: TableInfo, col: ColumnInfo, schema: SchemaInfo) ->
     if col.description:
         desc_str = f"Description: {col.description}\n"
 
+    sql_table = f"{table.dbt_schema}.{table.name}" if table.dbt_schema else table.name
+
     text = (
-        f"Column: {table.name}.{col.name}\n"
+        f"Column: {sql_table}.{col.name}\n"
         f"Type: {col.data_type} | "
         f"Nullable: {'yes' if col.is_nullable else 'no'} | "
         f"Primary key: {'yes' if col.is_primary_key else 'no'}\n"

@@ -26,6 +26,8 @@ STRICT RULES:
 6. If a question is ambiguous, pick the most reasonable interpretation.
 7. Never generate INSERT, UPDATE, DELETE, DROP, or DDL statements.
 8. Do not use markdown code fences in your response. Pure JSON only.
+9. Use SCHEMA-QUALIFIED table names exactly as shown (e.g. analytics.dim_students).
+10. Use JOIN RELATIONSHIPS listed below — do not invent join conditions.
 """
 
 # ── Few-shot examples ─────────────────────────────────────────
@@ -55,6 +57,37 @@ FEW_SHOT_EXAMPLES = [
 
 
 # ── Prompt assembly ───────────────────────────────────────────
+
+def _extract_join_hints(schema_chunks: list[dict]) -> str:
+    """
+    Builds a JOIN RELATIONSHIPS section from FK metadata in schema chunks.
+    Each FK in the retrieved chunks becomes an explicit join hint for the LLM.
+    """
+    hints = []
+    seen = set()
+    for chunk in schema_chunks:
+        if chunk.get("chunk_type") != "column":
+            continue
+        if not chunk.get("is_foreign_key"):
+            continue
+
+        table = chunk.get("sql_name") or chunk.get("table", "")
+        col = chunk.get("column", "")
+        ref_table = chunk.get("references_table", "")
+        ref_col = chunk.get("references_column", "")
+
+        if not all([table, col, ref_table, ref_col]):
+            continue
+
+        hint = f"{table}.{col} → {ref_table}.{ref_col}"
+        if hint not in seen:
+            seen.add(hint)
+            hints.append(f"  • {hint}")
+
+    if not hints:
+        return ""
+    return "JOIN RELATIONSHIPS (use these exact conditions for JOINs):\n" + "\n".join(hints)
+
 
 def build_sql_prompt(
     question: str,
@@ -91,6 +124,11 @@ def build_sql_prompt(
     for chunk in schema_chunks:
         prompt_parts.append(f"\n---\n{chunk.get('text', '')}")
     prompt_parts.append("---")
+
+    # 2b. Join hints (derived from FK metadata in retrieved chunks)
+    join_hints = _extract_join_hints(schema_chunks)
+    if join_hints:
+        prompt_parts.append(f"\n{join_hints}")
 
     # 3. Few-shot examples
     prompt_parts.append("\nEXAMPLES OF GOOD SQL GENERATION:")

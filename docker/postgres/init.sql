@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS connections (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Schema metadata (LLM-generated descriptions for each column)
+-- Schema metadata (introspected + dbt-enriched per column)
 CREATE TABLE IF NOT EXISTS schema_metadata (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     connection_id UUID REFERENCES connections(id) ON DELETE CASCADE,
@@ -54,7 +54,31 @@ CREATE TABLE IF NOT EXISTS schema_metadata (
     is_primary_key BOOLEAN DEFAULT FALSE,
     foreign_key VARCHAR(200),
     vector_id VARCHAR(100),
-    created_at TIMESTAMP DEFAULT NOW()
+    -- dbt semantic layer fields
+    dbt_model_schema VARCHAR(100),          -- Redshift schema (e.g. "analytics")
+    lineage JSONB DEFAULT '[]',             -- parent model names ["stg_students", ...]
+    source VARCHAR(20) DEFAULT 'introspection', -- 'introspection' | 'dbt'
+    created_at TIMESTAMP DEFAULT NOW(),
+    CONSTRAINT schema_metadata_unique UNIQUE (connection_id, table_name, column_name)
+);
+
+-- dbt integration config per connection
+CREATE TABLE IF NOT EXISTS dbt_configs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    connection_id UUID REFERENCES connections(id) ON DELETE CASCADE UNIQUE,
+    dbt_type VARCHAR(20) NOT NULL DEFAULT 'manifest', -- 'manifest' | 'cloud'
+    -- dbt Cloud fields (encrypted in production)
+    account_id VARCHAR(200),
+    project_id VARCHAR(200),
+    environment_id VARCHAR(200),
+    api_token_enc TEXT,
+    -- Sync state
+    sync_status VARCHAR(20) DEFAULT 'pending',  -- pending | syncing | ready | error
+    sync_error TEXT,
+    model_count INTEGER DEFAULT 0,
+    last_synced_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Query history

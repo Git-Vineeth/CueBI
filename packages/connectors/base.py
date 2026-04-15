@@ -33,7 +33,11 @@ class TableInfo:
     name: str
     columns: list[ColumnInfo] = field(default_factory=list)
     row_count: Optional[int] = None
-    description: Optional[str] = None  # filled by LLM later
+    description: Optional[str] = None
+    # dbt-specific: set when schema is loaded from manifest.json
+    dbt_schema: Optional[str] = None    # Redshift schema (e.g. "analytics")
+    dbt_database: Optional[str] = None  # Redshift database (e.g. "dev")
+    lineage: list[str] = field(default_factory=list)  # parent model names
 
 
 @dataclass

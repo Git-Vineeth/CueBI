@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from apps.api.api.routes import health, connections, query, schema, dashboard
-from apps.api.api.routes import reports, explain, teams
+from apps.api.api.routes import reports, explain, teams, dbt
 
 
 @asynccontextmanager
@@ -51,3 +51,4 @@ app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"]
 app.include_router(reports.router, prefix="/api/reports", tags=["Scheduled Reports & Alerts"])
 app.include_router(explain.router, prefix="/api", tags=["SQL Explain"])
 app.include_router(teams.router, prefix="/api/teams", tags=["Teams"])
+app.include_router(dbt.router, prefix="/api/connections", tags=["dbt Integration"])
