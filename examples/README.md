@@ -1,6 +1,6 @@
 # Sample Indian E-Commerce Dataset
 
-This is a fictional Indian e-commerce dataset designed for testing and demos of BharatBI.
+This is a fictional Indian e-commerce dataset designed for testing and demos of CueBI.
 
 ## What's inside
 
@@ -32,8 +32,8 @@ This is a fictional Indian e-commerce dataset designed for testing and demos of 
 ## How to load
 
 ```bash
-# If using the BharatBI docker-compose:
-docker exec -i bharatbi-postgres psql -U bharatbi -d bharatbi_demo < examples/sample_indian_ecommerce.sql
+# If using the CueBI docker-compose:
+docker exec -i cuebi-postgres psql -U cuebi -d cuebi_demo < examples/sample_indian_ecommerce.sql
 
 # Or standalone:
 psql -h localhost -U youruser -d yourdb < examples/sample_indian_ecommerce.sql

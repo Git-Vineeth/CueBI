@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 """
-BharatBI Google Sheets Connector — connects to user's Google Sheets
+CueBI Google Sheets Connector — connects to user's Google Sheets
 and treats each sheet tab as a database table.
 
 Flow:
 1. User authenticates via Google OAuth
 2. User picks a spreadsheet
-3. BharatBI reads all sheet tabs → each becomes a staging table in PostgreSQL
+3. CueBI reads all sheet tabs → each becomes a staging table in PostgreSQL
 4. Headers (row 1) become column names, rows 2+ become data
 5. Schema goes through the normal embedding pipeline
 6. User can query their spreadsheet data with natural language
@@ -15,7 +15,7 @@ Flow:
 Why this matters for India:
 Millions of Indian SMBs run their business on Google Sheets.
 Inventory tracking, sales logs, employee data — all in sheets.
-BharatBI makes all of that queryable without SQL.
+CueBI makes all of that queryable without SQL.
 """
 import os
 import re
@@ -306,4 +306,4 @@ def build_schema_from_sheets(data: SheetsData, counts: dict) -> SchemaInfo:
                 columns=columns,
             ))
 
-    return SchemaInfo(tables=tables, dialect="postgresql", database_name="bharatbi")
+    return SchemaInfo(tables=tables, dialect="postgresql", database_name="cuebi")

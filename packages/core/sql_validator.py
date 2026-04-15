@@ -1,6 +1,6 @@
 from __future__ import annotations
 """
-BharatBI — SQL Validator
+CueBI — SQL Validator
 Validates generated SQL before executing it on the user's database.
 
 Three-layer validation:
@@ -8,7 +8,7 @@ Three-layer validation:
 2. EXPLAIN on the actual DB (catches semantic errors: unknown tables/columns)
 3. Auto-retry: if validation fails, send error back to LLM for self-correction
 
-This retry loop is key to BharatBI's reliability.
+This retry loop is key to CueBI's reliability.
 """
 
 import sqlglot

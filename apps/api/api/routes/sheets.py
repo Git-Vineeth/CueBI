@@ -4,8 +4,8 @@ from __future__ import annotations
 Google Sheets API routes — OAuth flow, spreadsheet listing, import, and CSV upload.
 
 Two modes:
-1. OAuth: User connects Google account → picks spreadsheet → BharatBI imports it
-2. CSV Upload: User exports sheet as CSV → uploads to BharatBI (no OAuth needed)
+1. OAuth: User connects Google account → picks spreadsheet → CueBI imports it
+2. CSV Upload: User exports sheet as CSV → uploads to CueBI (no OAuth needed)
 
 Mode 2 is the simpler path for Indian users who may be uncomfortable with OAuth.
 """
@@ -26,7 +26,7 @@ from packages.core.embedder import store_chunks
 router = APIRouter()
 
 DEV_ORG_ID = "00000000-0000-0000-0000-000000000001"
-STAGING_DB_URL = os.getenv("SYNC_DATABASE_URL", "postgresql://bharatbi:bharatbi_dev@postgres:5432/bharatbi")
+STAGING_DB_URL = os.getenv("SYNC_DATABASE_URL", "postgresql://cuebi:cuebi_dev@postgres:5432/cuebi")
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
@@ -140,7 +140,7 @@ async def upload_csv(
     file: UploadFile = File(...),
     name: str = Form("CSV Import"),
     sheet_name: str = Form("sheet1"),
-):
+):  
     """
     Upload a CSV file exported from Google Sheets (or any CSV).
     This is the no-OAuth path — simpler for Indian SMB users.
@@ -176,7 +176,7 @@ async def _stage_and_embed(sheets_data, name: str, source_ref: str) -> dict:
         result = await db.execute(
             text("""
                 INSERT INTO connections (org_id, name, conn_type, host, port, database_name, username, password_enc, status, extra_config)
-                VALUES (:org_id, :name, 'google_sheets', 'localhost', 5432, 'bharatbi', 'bharatbi', 'bharatbi_dev', 'syncing',
+                VALUES (:org_id, :name, 'google_sheets', 'localhost', 5432, 'cuebi', 'cuebi', 'cuebi_dev', 'syncing',
                         :config::jsonb)
                 RETURNING id
             """),

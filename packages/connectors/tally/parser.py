@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 """
-BharatBI Tally Connector — parses Tally XML and Excel exports into
+CueBI Tally Connector — parses Tally XML and Excel exports into
 queryable PostgreSQL staging tables.
 
 Supported Tally export formats:
@@ -11,7 +11,7 @@ Supported Tally export formats:
    Day Book, Trial Balance, P&L, Balance Sheet, Stock Summary, etc.
 
 Flow:
-  User uploads Tally file → BharatBI parses it → creates staging tables
+  User uploads Tally file → CueBI parses it → creates staging tables
   in PostgreSQL → runs embedding pipeline → user can query with NL
 """
 import io

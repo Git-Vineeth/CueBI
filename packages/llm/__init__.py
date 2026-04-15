@@ -1,6 +1,6 @@
 from __future__ import annotations
 """
-BharatBI — LLM Router
+CueBI — LLM Router
 Returns the right LLM provider based on user/org preference.
 Falls back gracefully if a key is missing.
 """

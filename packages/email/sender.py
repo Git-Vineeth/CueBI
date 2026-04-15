@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 """
-BharatBI Email Service — sends scheduled report results and alert notifications.
+CueBI Email Service — sends scheduled report results and alert notifications.
 Uses Resend (resend.com) — developer-friendly, 3000 free emails/month.
 
 Setup: Set RESEND_API_KEY in .env
@@ -13,7 +13,7 @@ import io
 from typing import Any
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
-FROM_EMAIL = os.getenv("FROM_EMAIL", "reports@bharatbi.in")
+FROM_EMAIL = os.getenv("FROM_EMAIL", "reports@cuebi.in")
 
 
 async def send_report_email(
@@ -79,14 +79,14 @@ async def send_alert_email(
 
     import httpx
 
-    subject = f"🔔 BharatBI Alert: {alert_name}"
+    subject = f"🔔 CueBI Alert: {alert_name}"
     body = (
         f"Alert: {alert_name}\n\n"
         f"Condition: {condition_text}\n"
         f"Current Value: ₹{current_value:,.2f}\n"
         f"Threshold: ₹{threshold:,.2f}\n\n"
         f"Query: {question}\n\n"
-        f"—\nBharatBI • India's GenBI System\n"
+        f"—\nCueBI • CueBI System\n"
     )
 
     payload = {

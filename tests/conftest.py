@@ -1,4 +1,4 @@
-"""Shared fixtures for all BharatBI tests."""
+"""Shared fixtures for all CueBI tests."""
 import pytest
 from packages.connectors.base import SchemaInfo, TableInfo, ColumnInfo
 
@@ -8,7 +8,7 @@ def sample_indian_schema() -> SchemaInfo:
     """A realistic Indian e-commerce schema for testing."""
     return SchemaInfo(
         dialect="postgresql",
-        database_name="bharatbi_test",
+        database_name="cuebi_test",
         tables=[
             TableInfo(
                 name="customers",

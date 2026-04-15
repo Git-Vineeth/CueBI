@@ -18,7 +18,7 @@ router = APIRouter()
 DEV_ORG_ID = "00000000-0000-0000-0000-000000000001"
 
 # Tally staging uses the app's own Postgres (demo-db is for SQL connectors)
-STAGING_DB_URL = os.getenv("SYNC_DATABASE_URL", "postgresql://bharatbi:bharatbi_dev@postgres:5432/bharatbi")
+STAGING_DB_URL = os.getenv("SYNC_DATABASE_URL", "postgresql://cuebi:cuebi_dev@postgres:5432/cuebi")
 
 
 @router.post("/upload")
@@ -28,7 +28,7 @@ async def upload_tally_file(
 ):
     """
     Upload a Tally XML or Excel file.
-    BharatBI auto-parses it, creates staging tables, and runs the embedding pipeline.
+    CueBI auto-parses it, creates staging tables, and runs the embedding pipeline.
     """
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file uploaded")
@@ -76,7 +76,7 @@ async def upload_tally_file(
         result = await db.execute(
             text("""
                 INSERT INTO connections (org_id, name, conn_type, host, port, database_name, username, password_enc, status, extra_config)
-                VALUES (:org_id, :name, 'tally', 'localhost', 5432, 'bharatbi', 'bharatbi', 'bharatbi_dev', 'syncing',
+                VALUES (:org_id, :name, 'tally', 'localhost', 5432, 'cuebi', 'cuebi', 'cuebi_dev', 'syncing',
                         :config::jsonb)
                 RETURNING id
             """),
@@ -231,4 +231,4 @@ def _build_schema_from_tally(data: TallyData, counts: dict) -> SchemaInfo:
                 row_count=len(rows), columns=cols,
             ))
 
-    return SchemaInfo(tables=tables, dialect="postgresql", database_name="bharatbi")
+    return SchemaInfo(tables=tables, dialect="postgresql", database_name="cuebi")

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """
 Tally Staging — takes parsed TallyData and creates queryable PostgreSQL
-staging tables. These tables then go through the normal BharatBI
+staging tables. These tables then go through the normal CueBI
 embedding pipeline so users can query their Tally data with natural language.
 """
 import asyncpg

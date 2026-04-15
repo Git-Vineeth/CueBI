@@ -7,4 +7,4 @@ router = APIRouter()
 
 @router.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "bharatbi-api", "version": "0.1.0"}
+    return {"status": "healthy", "service": "cuebi-api", "version": "0.1.0"}

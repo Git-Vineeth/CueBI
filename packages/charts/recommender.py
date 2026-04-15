@@ -1,6 +1,6 @@
 from __future__ import annotations
 """
-BharatBI — Chart Recommender
+CueBI — Chart Recommender
 Analyses the SQL result shape and recommends the best chart type.
 Returns an ECharts-compatible config that the frontend renders directly.
 

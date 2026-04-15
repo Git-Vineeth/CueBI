@@ -1,5 +1,5 @@
 """
-BharatBI — Query Pipeline Service
+CueBI — Query Pipeline Service
 Orchestrates the full 10-step query flow.
 
 Called by: apps/api/api/routes/query.py
@@ -27,7 +27,7 @@ async def run_query_pipeline(
     dialect: str = "postgresql",
 ) -> dict:
     """
-    The complete BharatBI query pipeline.
+    The complete CueBI query pipeline.
 
     Steps:
     1.  Embed user question

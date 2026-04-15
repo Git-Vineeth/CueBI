@@ -1,6 +1,6 @@
 from __future__ import annotations
 """
-BharatBI — LLM Provider Base Class
+CueBI — LLM Provider Base Class
 All LLM providers (OpenAI, Anthropic) implement this interface.
 This means you can swap providers with zero changes to the query pipeline.
 """
@@ -25,7 +25,7 @@ class SummaryResult:
 
 class BaseLLMProvider(ABC):
     """
-    Abstract base class for all BharatBI LLM providers.
+    Abstract base class for all CueBI LLM providers.
 
     To add a new LLM provider:
     1. Create a new file: packages/llm/your_provider.py
