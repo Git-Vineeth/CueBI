@@ -8,20 +8,24 @@ Ask questions about your data in plain English — CueBI generates SQL, executes
 
 ## What is CueBI?
 
-CueBI is an internal GenBI (Generative BI) platform built for Cuemath's data and analytics teams. Connect your database, ask questions in English, and get instant insights.
+CueBI is an internal GenBI (Generative BI) platform built for Cuemath. Connect your database, ask questions in English, and get instant insights — with department-wise access control so each team only sees their own data.
 
 | Feature | Description |
 |---------|-------------|
 | **Natural Language → SQL** | Ask questions in English. SQL is generated, validated, and executed automatically |
 | **Auto Charts** | Line, bar, pie, horizontal bar — auto-detected from your data shape |
 | **AI Summaries** | Every result comes with a plain English insight |
+| **Google SSO** | Sign in with your @cuemath.com Google Workspace account |
+| **Invite-First Access** | Admin pre-provisions users by email — no self-signup |
+| **Per-Team Data Access** | Finance sees finance tables only; Marketing sees marketing tables only |
+| **Team-Scoped History** | Queries, dashboards, and pinned charts are private to each team |
+| **Admin Panel** | Manage teams, members, schema access, and example questions at `/admin` |
 | **AWS Native** | Connect Amazon Redshift, RDS PostgreSQL, and RDS MySQL out of the box |
 | **PostgreSQL + MySQL** | Direct connectors with schema extraction, sample values, FK detection |
 | **Multi-LLM** | Choose OpenAI GPT-4o or Anthropic Claude |
 | **Pin to Dashboard** | Pin any query result as a dashboard card with one-click refresh |
 | **Scheduled Reports** | Run queries on a cron schedule, email results as CSV |
 | **Alerts** | Monitor metrics against thresholds — get notified when a KPI drops |
-| **Multi-User Teams** | Invite team members with role-based access (Admin / Analyst / Viewer) |
 | **SQL Explainer** | "Explain this SQL" — breaks down queries for non-technical stakeholders |
 | **Schema Explorer** | Browse tables and columns with search |
 | **Query History** | All past questions saved with timing and results |
@@ -31,7 +35,7 @@ CueBI is an internal GenBI (Generative BI) platform built for Cuemath's data and
 ```
 ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
 │  Next.js UI  │────▶│  FastAPI API  │────▶│  Your DB    │
-│  (Vercel)    │     │  (Railway)   │     │  (Redshift/ │
+│  (Port 3000) │     │  (Port 8000) │     │  (Redshift/ │
 └─────────────┘     └──────┬───────┘     │   RDS/PG)   │
                            │             └─────────────┘
               ┌────────────┼────────────┐
@@ -40,6 +44,18 @@ CueBI is an internal GenBI (Generative BI) platform built for Cuemath's data and
         │ OpenAI / │ │  Qdrant  │ │PostgreSQL│
         │ Anthropic│ │ (Vectors)│ │ (App DB) │
         └──────────┘ └──────────┘ └──────────┘
+```
+
+## Auth Flow
+
+```
+Admin provisions user (email + team) via /admin panel
+→ User opens CueBI → clicks "Sign in with Google"
+→ NextAuth Google OAuth → FastAPI checks email in users table
+→ Not provisioned → blocked with error message
+→ Provisioned → CueBI JWT issued (user_id, team_id, role)
+→ All API calls authenticated via Bearer token
+→ Qdrant search filtered to team's allowed tables only
 ```
 
 ## Supported Data Sources
@@ -60,7 +76,7 @@ CueBI is an internal GenBI (Generative BI) platform built for Cuemath's data and
 git clone https://github.com/Git-Vineeth/CueBI
 cd cuebi
 cp .env.example .env
-# Edit .env — add OPENAI_API_KEY or ANTHROPIC_API_KEY
+# Edit .env — add your API keys and Google OAuth credentials
 docker-compose up --build
 ```
 
@@ -68,6 +84,8 @@ App runs at:
 - Frontend: http://localhost:3000
 - API: http://localhost:8000
 - API Docs: http://localhost:8000/docs
+
+**Local dev without Google OAuth:** Set `ENVIRONMENT=development` in `.env`. The API will fall back to a dev seed user (`dev@cuemath.com`) when no Bearer token is provided — no Google credentials needed.
 
 ## Running Tests
 
@@ -82,9 +100,17 @@ cuebi/
 ├── apps/
 │   ├── api/               # FastAPI backend
 │   │   ├── routes/        # API endpoints
+│   │   │   ├── auth.py    # Google login, JWT issuance
+│   │   │   ├── admin.py   # Team/user/schema management
+│   │   │   └── ...
+│   │   ├── deps.py        # Auth dependencies (get_current_user, require_admin)
 │   │   └── services/      # Business logic
 │   └── web/               # Next.js frontend
 │       ├── app/           # Pages (App Router)
+│       │   ├── admin/     # Admin panel
+│       │   └── ...
+│       ├── auth.config.ts # NextAuth options (Google provider)
+│       ├── middleware.ts  # Route protection
 │       ├── components/    # Shared UI components
 │       └── lib/           # API client, state store
 ├── packages/
@@ -93,7 +119,8 @@ cuebi/
 │   ├── charts/            # Chart type recommender
 │   ├── llm/               # LLM providers (OpenAI, Anthropic)
 │   └── email/             # Email notifications
-├── docker/                # Docker configs
+├── docker/
+│   └── postgres/          # DB init + migrations
 └── tests/                 # Test suite
 ```
 
@@ -107,6 +134,13 @@ cuebi/
 | `SYNC_DATABASE_URL` | Yes | App PostgreSQL (sync) |
 | `QDRANT_URL` | Yes | Qdrant vector DB URL |
 | `REDIS_URL` | Yes | Redis URL for Celery |
+| `CUEBI_JWT_SECRET` | Yes | Secret for signing CueBI JWTs |
+| `ALLOWED_EMAIL_DOMAIN` | Yes | Restrict login to this domain (e.g. `cuemath.com`) |
+| `ENVIRONMENT` | No | Set to `development` to bypass auth locally |
+| `NEXTAUTH_SECRET` | Yes | NextAuth session encryption secret |
+| `NEXTAUTH_URL` | Yes | Public URL of the frontend (e.g. `http://localhost:3000`) |
+| `GOOGLE_CLIENT_ID` | Yes | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth client secret |
 | `FRONTEND_URL` | No | Frontend URL for CORS |
 | `SENDGRID_API_KEY` | No | For scheduled report emails |
 
